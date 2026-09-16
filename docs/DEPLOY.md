@@ -3,6 +3,18 @@
 Checkout stays unlisted until this flow is verified end to end. Nothing here
 requires touching the iPhone app.
 
+## Confirmed deployment target
+
+- Domain: `https://web.rekisupplement.com` (Reki Web only; apex and
+  `/privacy`, `/terms`, `/help` stay exactly as they are for Apple).
+- Host: VPS `2.25.174.209`. DNS: `web.` needs an A record to that IP.
+- Proxy: Caddy `web.rekisupplement.com` → local Node process (`npm start`
+  on `$PORT`). Existing Caddy sites stay untouched.
+- Derived Whop URLs (valid only after DNS + proxy + TLS are live):
+  - Return: `https://web.rekisupplement.com/api/whop/return`
+  - Webhook: `https://web.rekisupplement.com/api/webhooks/whop`
+  - OAuth callback: `https://web.rekisupplement.com/api/auth/whop/callback`
+
 ## What was built
 
 - `server/`: Express API + SQLite paid-access backend.
