@@ -5,6 +5,7 @@ import "@fontsource/dm-sans/latin-700.css";
 import "@fontsource/nunito-sans/latin-700.css";
 import "@fontsource/nunito-sans/latin-800.css";
 import "./style.css";
+import { searchSupplements } from "./supplements-data.js";
 
 const paths = {
   arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
@@ -193,7 +194,7 @@ document.querySelector("#app").innerHTML = `
     </div></section>
   </main>
   <footer class="wrap"><a class="brand" href="#"><span>reki<span class="brand-dot">.</span></span><span class="web-label">WEB</span></a><p>A little more mindful. A little more you.</p><a href="mailto:admin@rekisupplement.org">Say hello ${icon("arrow")}</a></footer>
-  <dialog id="editor" aria-labelledby="editor-title"><form id="supplement-form"><div class="dialog-heading"><h2 id="editor-title">A new little habit.</h2><button type="button" class="icon-button" data-close aria-label="Close supplement editor">${icon("close")}</button></div><input type="hidden" name="id"><label>Supplement name<input name="name" required maxlength="70" placeholder="e.g. Vitamin D3" autocomplete="off"></label><label>Your serving note<input name="detail" maxlength="100" placeholder="e.g. 1 softgel with breakfast" autocomplete="off"></label><label>When do you take it?<select name="time"><option>Morning</option><option>Evening</option><option>Anytime</option></select></label><p class="form-note">Record your existing routine. Follow your label or clinician's guidance for dosage.</p><button class="button button-coral" type="submit">Save to my stack ${icon("check")}</button></form></dialog>
+  <dialog id="editor" aria-labelledby="editor-title"><form id="supplement-form"><div class="dialog-heading"><h2 id="editor-title">A new little habit.</h2><button type="button" class="icon-button" data-close aria-label="Close supplement editor">${icon("close")}</button></div><input type="hidden" name="id"><label>Supplement name<input name="name" required maxlength="70" placeholder="e.g. Vitamin D3" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="supplement-suggest" aria-autocomplete="list"><ul class="suggest-list" id="supplement-suggest" role="listbox" aria-label="Matching supplements" hidden></ul></label><label>Your serving note<input name="detail" maxlength="100" placeholder="e.g. 1 softgel with breakfast" autocomplete="off"></label><label>When do you take it?<select name="time"><option>Morning</option><option>Evening</option><option>Anytime</option></select></label><p class="form-note">Record your existing routine. Follow your label or clinician's guidance for dosage.</p><button class="button button-coral" type="submit">Save to my stack ${icon("check")}</button></form></dialog>
   <dialog id="checkin" aria-labelledby="checkin-title"><form id="checkin-form"><div class="dialog-heading"><h2 id="checkin-title">How's your day feeling?</h2><button type="button" class="icon-button" data-close aria-label="Close check-in">${icon("close")}</button></div><p class="dialog-intro">No right answer. Just a moment for you.</p>${["energy", "sleep", "mood"].map((metric) => `<fieldset><legend>${metric[0].toUpperCase() + metric.slice(1)}</legend><div class="rating-options">${[1, 2, 3, 4, 5].map((n) => `<label><input type="radio" name="${metric}" value="${n}" required><span>${n}</span></label>`).join("")}</div><div class="rating-scale"><span>Low</span><span>Great</span></div></fieldset>`).join("")}<button class="button button-coral" type="submit">Save my check-in ${icon("check")}</button></form></dialog>
   <dialog id="start-dialog" aria-labelledby="start-title"><div class="dialog-heading"><h2 id="start-title">Make room for your routine.</h2><button class="icon-button" data-close aria-label="Close start dialog">${icon("close")}</button></div><p>This removes the example stack and any preview check-ins so you can start fresh. Your new entries will stay in this browser only.</p><button class="button button-coral" id="confirm-start">Start my own stack ${icon("arrow")}</button></dialog>
   <dialog id="delete-dialog" aria-labelledby="delete-title"><div class="dialog-heading"><h2 id="delete-title">Remove this supplement?</h2><button class="icon-button" data-close aria-label="Close removal dialog">${icon("close")}</button></div><p id="delete-description"></p><button class="button button-dark" id="confirm-delete">Remove from my stack</button></dialog>
@@ -303,9 +304,83 @@ function openEditor(id) {
   for (const field of ["id", "name", "detail", "time"])
     form.elements[field].value =
       item?.[field] || (field === "time" ? "Morning" : "");
+  closeSuggest();
   document.querySelector("#editor").showModal();
   form.elements.name.focus();
 }
+
+// Built-in directory suggestions for the name field.
+const nameInput = document.querySelector("#supplement-form").elements.name;
+const suggestBox = document.querySelector("#supplement-suggest");
+let suggestItems = [];
+let suggestIndex = -1;
+
+function closeSuggest() {
+  suggestItems = [];
+  suggestIndex = -1;
+  suggestBox.innerHTML = "";
+  suggestBox.hidden = true;
+  nameInput.setAttribute("aria-expanded", "false");
+}
+
+function renderSuggest() {
+  suggestBox.innerHTML = suggestItems
+    .map(
+      (item, i) =>
+        `<li role="option" id="suggest-option-${i}" aria-selected="${i === suggestIndex}">` +
+        `<strong>${esc(item.name)}</strong><span>${esc(item.serving)} · ${esc(item.time)}</span></li>`,
+    )
+    .join("");
+  suggestBox.hidden = suggestItems.length === 0;
+  nameInput.setAttribute("aria-expanded", String(suggestItems.length > 0));
+}
+
+function pickSuggest(i) {
+  const item = suggestItems[i];
+  if (!item) return;
+  const form = document.querySelector("#supplement-form");
+  form.elements.name.value = item.name;
+  if (!form.elements.detail.value.trim()) form.elements.detail.value = item.serving;
+  form.elements.time.value = item.time;
+  closeSuggest();
+  announce(`${item.name} selected. Serving note added — edit it to match your label.`);
+  form.elements.detail.focus();
+}
+
+nameInput.addEventListener("input", () => {
+  nameInput.setCustomValidity("");
+  suggestItems = searchSupplements(nameInput.value);
+  suggestIndex = -1;
+  renderSuggest();
+});
+
+nameInput.addEventListener("keydown", (event) => {
+  if (suggestBox.hidden) return;
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    suggestIndex =
+      (suggestIndex + (event.key === "ArrowDown" ? 1 : -1) + suggestItems.length) %
+      suggestItems.length;
+    renderSuggest();
+    document.querySelector(`#suggest-option-${suggestIndex}`)?.scrollIntoView({ block: "nearest" });
+  } else if (event.key === "Enter" && suggestIndex >= 0) {
+    event.preventDefault();
+    pickSuggest(suggestIndex);
+  } else if (event.key === "Escape") {
+    closeSuggest();
+  }
+});
+
+suggestBox.addEventListener("mousedown", (event) => {
+  const option = event.target.closest('[role="option"]');
+  if (!option) return;
+  event.preventDefault();
+  pickSuggest(Number(option.id.replace("suggest-option-", "")));
+});
+
+nameInput.addEventListener("blur", () => {
+  setTimeout(closeSuggest, 120);
+});
 
 let pendingDelete;
 document.addEventListener("click", (event) => {

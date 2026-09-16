@@ -302,6 +302,30 @@ test("supports keyboard tab navigation and escape from dialogs", async ({
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+test("suggests supplements from the built-in directory", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "My stack", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Add a supplement", exact: true })
+    .first()
+    .click();
+  const name = page.getByLabel("Supplement name");
+  await name.fill("mag");
+  const listbox = page.getByRole("listbox", { name: "Matching supplements" });
+  await expect(listbox).toBeVisible();
+  await expect(listbox).toContainText("Magnesium Glycinate");
+  await name.press("ArrowDown");
+  await name.press("Enter");
+  await expect(name).toHaveValue("Magnesium Glycinate");
+  await expect(page.getByLabel("Your serving note")).toHaveValue("1 capsule");
+  await expect(page.getByLabel("When do you take it?")).toHaveValue("Evening");
+  await page.getByRole("button", { name: "Save to my stack" }).click();
+  await expect(page.locator("#tracker-content")).toContainText(
+    "Magnesium Glycinate",
+  );
+});
+
 test("renders user text safely", async ({ page }) => {
   await page.getByRole("tab", { name: "My stack", exact: true }).click();
   await page
