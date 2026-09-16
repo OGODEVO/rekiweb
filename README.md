@@ -33,12 +33,16 @@ The included optimized mascot assets come from the local Rekianime folder (face)
 
 ## Offer boundaries
 
-Reki Web, $3.99 USD paid once for one month of core web tracker beta access. No automatic renewal or subsequent automatic charge; paid access ends after one month. Separate from Reki Pro/iPhone. AI scanning and iPhone app access are not included.
+Reki Web membership: $15 USD now, then $15 every 30 days through Whop
+(`plan_ntTuSfZpGhMJu`). Manage or cancel in Whop; access covers time already
+paid. Separate from Reki Pro/iPhone. AI scanning and iPhone app access are
+not included.
 
 Access is granted only by a server-verified Whop membership recorded as an
 entitlement; checkout redirects alone unlock nothing. Expiry, refunds, and
-deactivation revoke access. Checkout stays unlisted until the flow in
-`docs/DEPLOY.md` is verified end to end.
+deactivation revoke access; expired members keep read-only history plus
+export. Checkout stays unlisted until the flow in `docs/DEPLOY.md` is
+verified end to end.
 
 ## Verify
 

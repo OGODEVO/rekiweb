@@ -11,17 +11,19 @@ Support/customer contact email: admin@rekisupplement.org
 
 - Title: Reki Web
 - Headline: Track your supplements. See how you feel.
-- Plan/internal name: One-month beta - no automatic renewal
-- Price: $3.99 USD, charged once.
-- Payment type: One-time, NOT recurring. No free trial, recurring fallback, or automatic second charge.
-- Access duration: One month from successful purchase. Enable Auto-expire access. If Whop supports only a day count, set 30 days, explicitly say "30 days" in checkout, and report this so the website copy and backend expiry can be matched before launch.
-- No lifetime access, annual plan, or additional paid tiers for this test.
-- No requirement to cancel: access expires without another charge.
+- Plan/internal name: Monthly membership — $15 now, then $15 every 30 days
+- Price: $15 USD now, then $15 every 30 days (recurring).
+- Payment type: Recurring membership. No free trial.
+- Plan ID: `plan_ntTuSfZpGhMJu`. Checkout:
+  `https://whop.com/checkout/ch_mMNbh5gIMIjL09n/`.
+- The old $3.99 one-time plan is left alone and must not be sold.
+- Access duration: each paid period, verified server-side against Whop's
+  paid-through date. Manage/cancel in Whop; access covers time already paid.
 - Keep marketplace/store visibility off during setup. Unlisted is not a payment block; do not send real customers the checkout link yet.
 
 Description:
 
-> A friendly browser-based supplement tracker. Organize your stack and serving notes, check off your daily routine, and record your energy, sleep, and mood. Pay $3.99 once for one month of beta access. No automatic renewal. Reki Web is separate from the Reki iPhone app: this purchase does not unlock Reki Pro. AI scanning is not included. Personal tracking only, not medical advice or proof that a supplement works.
+> A friendly browser-based supplement tracker. Organize your stack and serving notes, check off your daily routine, and record your energy, sleep, and mood. $15 now, then $15 every 30 days. Manage or cancel in Whop. Reki Web is separate from the Reki iPhone app: this purchase does not unlock Reki Pro. AI scanning is not included. Personal tracking only, not medical advice or proof that a supplement works.
 
 ## Brand
 
@@ -34,8 +36,8 @@ Description:
 
 ## Checkout and delivery
 
-1. Confirm the checkout summary displays $3.99 USD once, the exact access duration, and no automatic renewal. Report any buyer-facing fees/tax behavior and the seller fee schedule; do not claim a guaranteed net margin.
-2. Confirm Auto-expire access is actually saved. The one-time payment setting alone must not accidentally grant permanent access. Do not substitute a recurring plan if expiry is unavailable; report the blocker.
+1. Confirm the checkout summary displays $15 USD now and every 30 days on plan `plan_ntTuSfZpGhMJu`. Report any buyer-facing fees/tax behavior and the seller fee schedule; do not claim a guaranteed net margin.
+2. Confirm access follows the paid-through period (recurring), not a fixed grant. Do not substitute a one-time plan; report the blocker if the plan type is wrong.
 3. Use a hosted Whop checkout link. Return its URL and the company, product, and plan IDs to the code agent. These IDs are not secrets.
 4. Configure post-checkout redirect only once the code/deployment agent supplies the real public HTTPS return URL. Do not use localhost or invent a production domain/path.
 5. Select only the intended Reki Web experience if available. Do not grant unrelated apps or a PDF as the product. Report if the web experience is not yet connected.
@@ -43,22 +45,23 @@ Description:
 7. Verify payment completion, failed/cancelled checkout, expiry, and refund/revocation behavior using Whop's supported test facilities where available. Do not charge a real card to test without explicit approval.
 
 Reference checked during setup: https://docs.whop.com/manage-your-business/payment-processing/set-up-pricing
-The docs list One-time payments, Auto-expire access, and Redirect after checkout. Verify the actual dashboard settings rather than assuming defaults.
+The docs list recurring billing and Redirect after checkout. Verify the actual dashboard settings rather than assuming defaults.
 
 ## Current code and launch blockers
 
-The repository now implements the paid flow in `server/` (OAuth sign-in,
-server-verified entitlements, signed idempotent webhooks, account-backed
-state, 30-day expiry). What is still missing before any sale:
+The repository now implements the paid flow in `server/` (Whop OAuth sign-in,
+server-verified recurring entitlements, signed idempotent webhooks,
+account-backed state with revisions, read-only history plus export after
+expiry). What is still missing before any sale:
 
 - HR-confirmed public `https://` domain (`PUBLIC_BASE_URL`), so the three
   URLs in `docs/DEPLOY.md` (return, webhook, OAuth callback) can be registered.
 - Whop-side values from this handoff's product setup: company, product, and
   plan IDs plus the hosted checkout URL, placed in server env (never GitHub).
-- End-to-end verification per `docs/DEPLOY.md` (test purchase, expiry,
+- End-to-end verification per `docs/DEPLOY.md` (test purchase, renewal,
   refund/revocation). Checkout stays unlisted until then.
 
-The proposed delivery flow is payment -> sign-in/account link -> server-verified one-month access -> saved tracker. A redirect or browser flag is not proof of payment. Whop expiry is also enforced server-side in Reki Web. Read-only history/export after expiry is planned, not built; do not promise it in checkout yet.
+The delivery flow is payment -> sign-in/account link -> server-verified membership access -> saved tracker. A redirect or browser flag is not proof of payment. Whop's paid-through date is enforced server-side in Reki Web.
 
 Do not connect live payments or advertise paid availability until the code agent completes and tests fulfillment. The iPhone app and its StoreKit subscriptions remain separate and unchanged.
 
@@ -68,6 +71,6 @@ Do not connect live payments or advertise paid availability until the code agent
 - Exact price, currency, non-recurring status, access duration, expiry setting, and visibility.
 - Screenshots of saved pricing/expiry and checkout summary, with private details redacted.
 - Confirm support email is admin@rekisupplement.org.
-- Actual fees discovered and whether $3.99 meets minimum price requirements.
+- Actual fees discovered and whether $15 meets minimum price requirements.
 - Redirect/experience integration status, test evidence, and remaining blockers.
 - Do not mark ready to sell until the full payment-to-access flow is verified.

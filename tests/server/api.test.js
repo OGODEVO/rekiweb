@@ -1,196 +1,163 @@
-// API integration tests with in-memory DB and stubbed Whop client.
-// No network, no secrets.
-
-import { describe, it, before, after } from "node:test";
+import { it } from "node:test";
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
-import { createApp } from "../../server/index.js";
-import { openDatabase } from "../../server/db.js";
+import { harness, tracker, membership, payment, DAY, iso } from "./fixtures.js";
 
-const SECRET = "ws_test_secret_0123456789abcdef";
-
-function stubWhop() {
-  return {
-    async checkAccess() {
-      return { has_access: true, access_level: "customer" };
-    },
-    async listMemberships() {
-      return [];
-    },
-    async retrieveMembership(id) {
-      return {
-        id,
-        user_id: "user_test",
-        product_id: "prod_test",
-        plan_id: "plan_test",
-        status: "active",
-        created_at: new Date().toISOString(),
-        current_period_end: null,
-      };
-    },
-    async retrievePayment(id) {
-      return { id, membership_id: "mem_test" };
-    },
-    async userInfo() {
-      return { sub: "user_test" };
-    },
-  };
-}
-
-const cfg = {
-  port: 0,
-  nodeEnv: "test",
-  publicBaseUrl: "https://example.com",
-  whopApiBase: "https://api.whop.com",
-  apiVersionDate: "2026-09-15",
-  apiKey: "",
-  webhookSecret: SECRET,
-  appId: "app_test",
-  clientSecret: "",
-  accountId: "biz_test",
-  productId: "prod_test",
-  planId: "plan_test",
-  checkoutUrl: "https://whop.com/checkout/test",
-  accessDurationDays: 30,
-  sessionSecret: "test-session-secret-0123456789",
-  databasePath: ":memory:",
-};
-
-let base;
-let server;
-let db;
-
-function sign(id, ts, body) {
-  const sig = createHmac("sha256", Buffer.from(SECRET, "utf8"))
-    .update(`${id}.${ts}.${body}`, "utf8")
-    .digest("base64");
-  return {
-    "webhook-id": id,
-    "webhook-timestamp": String(ts),
-    "webhook-signature": `v1,${sig}`,
-    "content-type": "application/json",
-  };
-}
-
-before(async () => {
-  db = openDatabase(":memory:");
-  const { app } = createApp({ db, cfg, whop: stubWhop() });
-  await new Promise((resolve) => {
-    server = app.listen(0, "127.0.0.1", resolve);
-  });
-  base = `http://127.0.0.1:${server.address().port}`;
+const write = (h, headers, state = tracker(), revision = 0) => h.request("/api/state", {
+  method: "PUT", headers, body: JSON.stringify({ state, revision }),
 });
 
-after(async () => {
-  await new Promise((resolve) => server.close(resolve));
+it("exposes the $15 recurring contract without credentials", async (t) => {
+  const h = await harness(t);
+  const result = await (await h.request("/api/config")).json();
+  assert.deepEqual(result, { checkoutConfigured: true, checkoutUrl: h.cfg.checkoutUrl,
+    authConfigured: true, billing: { price: 15, currency: "USD", intervalDays: 30 }, productTitle: "Reki Web" });
+  assert.deepEqual(await (await h.request("/api/me")).json(), { signedIn: false, access: { active: false } });
 });
 
-describe("paid-access API", () => {
-  it("exposes public config without secrets", async () => {
-    const res = await fetch(`${base}/api/config`);
-    const body = await res.json();
-    assert.equal(body.checkoutConfigured, true);
-    assert.equal(body.accessDurationDays, 30);
-    assert.ok(!("apiKey" in body) && !("webhookSecret" in body));
-  });
+it("paid sessions get identity, CSRF, revisions, and export; URL flags never grant", async (t) => {
+  const h = await harness(t), headers = h.auth();
+  const res = await h.request("/api/me", { headers });
+  const me = await res.json();
+  assert.equal(res.headers.get("cache-control"), "no-store");
+  assert.deepEqual(me.user, { id: "user_a", name: "user_a" });
+  assert.equal(me.csrfToken, headers["x-csrf-token"]);
+  assert.equal(me.access.active, true);
+  assert.equal(me.access.expiresAt, h.memberships[0].current_period_end);
+  assert.deepEqual(await (await h.request("/api/state", { headers })).json(), { state: null, revision: 0, updatedAt: null });
+  const saved = await (await write(h, headers)).json();
+  assert.equal(saved.revision, 1);
+  const stored = await (await h.request("/api/state", { headers })).json();
+  assert.deepEqual(stored.state, tracker());
+  const exported = await h.request("/api/export", { headers });
+  assert.match(exported.headers.get("content-disposition"), /attachment/);
+  assert.deepEqual(await exported.json(), stored);
+  assert.equal((await h.request("/api/state?access=active")).status, 401);
+});
 
-  it("gates state behind sign-in and paid access", async () => {
-    let res = await fetch(`${base}/api/state`);
-    assert.equal(res.status, 401);
-    // Signed in but unpaid.
-    db.prepare(
-      "INSERT INTO sessions (id, whop_user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
-    ).run(
-      "sess_unpaid",
-      "user_unpaid",
-      new Date().toISOString(),
-      "2030-01-01T00:00:00.000Z",
-    );
-    res = await fetch(`${base}/api/state`, {
-      headers: { cookie: "reki_session=sess_unpaid" },
-    });
-    assert.equal(res.status, 403);
-  });
+it("expired/unpaid users retain authenticated reads/export but cannot write", async (t) => {
+  const h = await harness(t), headers = h.auth();
+  assert.equal((await write(h, headers)).status, 200);
+  h.advance(31 * DAY);
+  // Existing session has expired too; a fresh sign-in still owns the old data.
+  const again = h.auth();
+  const me = await (await h.request("/api/me?refresh=1", { headers: again })).json();
+  assert.equal(me.access.active, false);
+  assert.equal(me.access.status, "expired");
+  assert.equal((await write(h, again, tracker(), 1)).status, 403);
+  assert.equal((await h.request("/api/export", { headers: again })).status, 200);
+  assert.deepEqual((await (await h.request("/api/state", { headers: again })).json()).state, tracker());
+  assert.equal((await h.request("/api/whop/return", { headers: again })).headers.get("location"), "/?access=pending#tracker");
+});
 
-  it("grants 30 days on payment.succeeded and stores state", async () => {
-    const envelope = {
-      id: "msg_pay_1",
-      type: "payment.succeeded",
-      data: { id: "pay_1", membership_id: "mem_test", user_id: "user_test" },
-    };
-    const body = JSON.stringify(envelope);
-    const ts = Math.floor(Date.now() / 1000);
-    const headers = { ...sign("msg_pay_1", ts, body) };
-    let res = await fetch(`${base}/api/webhooks/whop`, {
-      method: "POST",
-      headers,
-      body,
-    });
-    assert.equal(res.status, 200);
-    // Duplicate delivery is idempotent.
-    res = await fetch(`${base}/api/webhooks/whop`, {
-      method: "POST",
-      headers,
-      body,
-    });
-    assert.equal(res.status, 200);
-    db.prepare(
-      "INSERT INTO sessions (id, whop_user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
-    ).run(
-      "sess_paid",
-      "user_test",
-      new Date().toISOString(),
-      "2030-01-01T00:00:00.000Z",
-    );
-    const cookie = "reki_session=sess_paid";
-    res = await fetch(`${base}/api/me`, { headers: { cookie } });
-    assert.equal((await res.json()).access.active, true);
-    const state = {
-      supplements: [
-        { id: "a", name: "D3", detail: "1", time: "Morning", color: "peach" },
-      ],
-      days: {},
-    };
-    res = await fetch(`${base}/api/state`, {
-      method: "PUT",
-      headers: { cookie, "content-type": "application/json" },
-      body: JSON.stringify(state),
-    });
-    assert.equal(res.status, 200);
-    res = await fetch(`${base}/api/state`, { headers: { cookie } });
-    assert.deepEqual((await res.json()).state.supplements, state.supplements);
-  });
+it("cookie decoding never crashes and duplicated session cookies fail closed", async (t) => {
+  const h = await harness(t), headers = h.auth();
+  for (const cookie of ["unrelated=%", "reki_session=%ZZ", `${headers.cookie}; ${headers.cookie}`]) {
+    const response = await h.request("/api/me", { headers: { cookie } });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).signedIn, false);
+  }
+  assert.equal((await h.request("/api/health")).status, 200);
+});
 
-  it("ends access on membership.deactivated and refund", async () => {
-    const ts = Math.floor(Date.now() / 1000);
-    for (const [id, type, data] of [
-      ["msg_deact", "membership.deactivated", { id: "mem_test" }],
-      [
-        "msg_ref",
-        "refund.updated",
-        { id: "re_1", status: "succeeded", payment_id: "pay_1" },
-      ],
-    ]) {
-      const body = JSON.stringify({ id, type, data });
-      const res = await fetch(`${base}/api/webhooks/whop`, {
-        method: "POST",
-        headers: sign(id, ts, body),
-        body,
-      });
-      assert.equal(res.status, 200);
-    }
-    const res = await fetch(`${base}/api/me`, {
-      headers: { cookie: "reki_session=sess_paid" },
-    });
-    assert.equal((await res.json()).access.active, false);
-  });
+it("CSRF, Origin and exact user identity guard state writes and logout", async (t) => {
+  const h = await harness(t), headers = h.auth();
+  for (const [key, value, expected] of [["x-csrf-token", "wrong", 403], ["origin", "https://evil.example", 403],
+    ["origin", "", 403], ["x-reki-user", "user_other", 409], ["x-reki-user", "", 409]]) {
+    const bad = { ...headers, [key]: value };
+    assert.equal((await write(h, bad)).status, expected);
+    assert.equal((await h.request("/api/auth/logout", { method: "POST", headers: bad })).status, expected);
+  }
+  assert.equal((await h.request("/api/auth/logout", { method: "POST", headers })).status, 200);
+  assert.equal((await write(h, headers)).status, 401);
+});
 
-  it("rejects unsigned webhooks", async () => {
-    const res = await fetch(`${base}/api/webhooks/whop`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id: "x", type: "payment.succeeded", data: {} }),
-    });
-    assert.equal(res.status, 401);
-  });
+it("optimistic revisions reject parallel initial inserts and stale updates", async (t) => {
+  const h = await harness(t), headers = h.auth();
+  await h.request("/api/me", { headers });
+  assert.deepEqual((await Promise.all([write(h, headers), write(h, headers)])).map((r) => r.status).sort(), [200, 409]);
+  assert.deepEqual((await Promise.all([write(h, headers, tracker("A"), 1), write(h, headers, tracker("B"), 1)])).map((r) => r.status).sort(), [200, 409]);
+  assert.equal((await (await h.request("/api/state", { headers })).json()).revision, 2);
+  assert.equal((await write(h, headers, tracker(), 0)).status, 409);
+});
+
+it("two accounts cannot read or overwrite each other; switched tabs receive 409", async (t) => {
+  const h = await harness(t), a = h.auth(), b = h.auth("user_b");
+  const m = membership(h.now(), { id: "mem_b", user_id: "user_b" });
+  h.memberships.push(m); h.payments.push(payment(h.now(), m, { id: "pay_b" }));
+  assert.equal((await write(h, a, tracker("A"))).status, 200);
+  assert.equal((await write(h, b, tracker("B"))).status, 200);
+  const readA = await (await h.request("/api/state?user_id=user_b", { headers: a })).json();
+  const readB = await (await h.request("/api/state?user_id=user_a", { headers: b })).json();
+  assert.equal(readA.state.supplements[0].name, "A");
+  assert.equal(readB.state.supplements[0].name, "B");
+  assert.equal((await write(h, { ...b, "x-reki-user": "user_a" }, tracker(), 1)).status, 409);
+  assert.equal((await write(h, { ...a, cookie: b.cookie }, tracker(), 1)).status, 409);
+  assert.equal((await write(h, b, { ...tracker(), user_id: "user_a" }, 1)).status, 400);
+});
+
+it("refresh is cached for one minute, explicit refresh reconciles loss, failures deny writes but retain data", async (t) => {
+  const h = await harness(t), headers = h.auth();
+  assert.equal((await write(h, headers)).status, 200);
+  await h.request("/api/me", { headers });
+  assert.equal(h.calls.memberships, 1);
+  await h.request("/api/me?refresh=1", { headers });
+  assert.equal(h.calls.memberships, 2);
+  h.advance(60001);
+  await h.request("/api/me", { headers });
+  assert.equal(h.calls.memberships, 3);
+  const original = h.api.listMemberships;
+  h.api.listMemberships = async () => { throw new Error("secret-provider-error-must-not-leak"); };
+  const pending = await (await h.request("/api/me?refresh=1", { headers })).json();
+  assert.equal(pending.access.active, false);
+  assert.equal(pending.access.verificationPending, true);
+  const denied = await write(h, headers, tracker(), 1);
+  assert.equal(denied.status, 503);
+  assert.doesNotMatch(await denied.text(), /secret-provider/);
+  assert.equal((await (await h.request("/api/state", { headers })).json()).revision, 1);
+  h.api.listMemberships = original;
+  h.memberships.length = 0;
+  assert.equal((await (await h.request("/api/me?refresh=1", { headers })).json()).access.active, false);
+  assert.equal((await write(h, headers, tracker(), 1)).status, 403);
+});
+
+it("legacy stored state gains preferences on read without rewriting history", async (t) => {
+  const h = await harness(t), headers = h.auth();
+  const old = tracker(); delete old.preferences;
+  old.days["2026-09-16"].taken = ["deleted"];
+  h.db.prepare("INSERT INTO tracker_states (whop_user_id,data,updated_at) VALUES (?,?,?)").run("user_a", JSON.stringify(old), iso(h.now()));
+  const read = await (await h.request("/api/state", { headers })).json();
+  assert.equal(read.revision, 1);
+  assert.deepEqual(read.state.preferences, { tourCompleted: false });
+  assert.deepEqual(read.state.days["2026-09-16"].taken, ["deleted"]);
+  assert.equal((await write(h, headers, read.state, 1)).status, 200);
+});
+
+it("JSON failures, old PUT bodies, and oversized payloads return JSON errors", async (t) => {
+  const h = await harness(t), headers = h.auth();
+  for (const [body, expected] of [["{", 400], [JSON.stringify(tracker()), 400], [JSON.stringify({ value: "x".repeat(270000) }), 413]]) {
+    const result = await h.request("/api/state", { method: "PUT", headers, body });
+    assert.equal(result.status, expected);
+    assert.equal(typeof (await result.json()).error, "string");
+  }
+});
+
+it("logout during provider verification prevents a pending write", async (t) => {
+  const h = await harness(t), headers = h.auth();
+  let release, entered;
+  const began = new Promise((r) => { entered = r; });
+  h.api.listMemberships = async () => { entered(); await new Promise((r) => { release = r; }); return h.memberships; };
+  const pending = write(h, headers);
+  await began;
+  assert.equal((await h.request("/api/auth/logout", { method: "POST", headers })).status, 200);
+  release();
+  assert.equal((await pending).status, 401);
+  assert.equal(h.db.prepare("SELECT COUNT(*) n FROM tracker_states").get().n, 0);
+});
+
+it("explicit provider refreshes are rate limited", async (t) => {
+  const h = await harness(t), headers = h.auth();
+  for (let i = 0; i < 6; i++) assert.equal((await h.request("/api/me?refresh=1", { headers })).status, 200);
+  const limited = await h.request("/api/me?refresh=1", { headers });
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get("retry-after"), "60");
 });

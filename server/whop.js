@@ -1,94 +1,55 @@
-// Minimal Whop API client over fetch. No SDK dependency.
-// Docs: https://docs.whop.com/developer/guides/memberships
-// Versioned API pinned with Api-Version-Date.
+// Pinned Whop REST API. Never retain provider error bodies or credentials.
+export async function fetchJson(url, options = {}, fetchImpl = globalThis.fetch, timeoutMs = 4000) {
+  const signal = options.signal
+    ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])
+    : AbortSignal.timeout(timeoutMs);
+  const response = await fetchImpl(url, { ...options, signal, redirect: "error" });
+  if (!response.ok) throw new Error("Provider request failed");
+  const data = await response.json();
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Invalid provider response");
+  return data;
+}
 
-function headers(apiKey, versionDate) {
-  return {
-    Authorization: `Bearer ${apiKey}`,
-    "Api-Version-Date": versionDate,
-    "Content-Type": "application/json",
+export function createWhopClient({ apiKey, apiBase, versionDate, fetchImpl = globalThis.fetch, timeoutMs = 4000 }) {
+  const headers = { Authorization: `Bearer ${apiKey}`, "Api-Version-Date": versionDate };
+  const request = (path, signal) => fetchJson(new URL(path, apiBase), { headers, signal }, fetchImpl, timeoutMs);
+  const retrieve = (kind, id, signal) => {
+    if (typeof id !== "string" || !/^[a-z]+_[A-Za-z0-9]+$/.test(id)) throw new Error("Invalid resource ID");
+    return request(`/api/v1/${kind}/${id}`, signal);
   };
-}
-
-function url(base, path, query) {
-  const u = new URL(path, base.endsWith("/") ? base : `${base}/`);
-  if (query)
-    for (const [k, v] of Object.entries(query))
-      if (v !== undefined && v !== "") u.searchParams.set(k, v);
-  return u.toString();
-}
-
-async function readJson(res) {
-  const text = await res.text();
-  try {
-    return text ? JSON.parse(text) : null;
-  } catch {
-    return null;
+  async function list(path, query, signal) {
+    const all = [], cursors = new Set();
+    signal = signal || AbortSignal.timeout(15000);
+    let after;
+    for (let page = 0; page < 20; page++) {
+      const u = new URL(`/api/v1/${path}`, apiBase);
+      for (const [key, value] of Object.entries({ ...query, first: 100, after }))
+        if (value !== undefined) u.searchParams.set(key, String(value));
+      const body = await request(u.href, signal);
+      if (!Array.isArray(body.data) || typeof body.page_info?.has_next_page !== "boolean")
+        throw new Error("Invalid provider page");
+      all.push(...body.data);
+      if (!body.page_info.has_next_page) return all;
+      after = body.page_info.end_cursor;
+      if (typeof after !== "string" || !after || cursors.has(after)) throw new Error("Invalid provider cursor");
+      cursors.add(after);
+    }
+    throw new Error("Provider pagination limit exceeded");
   }
-}
-
-function err(status, body) {
-  const e = new Error(`Whop API ${status}`);
-  e.status = status;
-  e.body = body;
-  return e;
-}
-
-export function createWhopClient({
-  apiKey,
-  apiBase,
-  versionDate,
-  fetchImpl = globalThis.fetch,
-}) {
-  const h = () => headers(apiKey, versionDate);
   return {
-    async checkAccess(userId, resourceId) {
-      const res = await fetchImpl(
-        url(apiBase, `/api/v1/users/${userId}/access/${resourceId}`),
-        { headers: h() },
-      );
-      const body = await readJson(res);
-      if (!res.ok) throw err(res.status, body);
-      return body;
-    },
-    async listMemberships({ userId, accountId, productId, planId } = {}) {
-      const res = await fetchImpl(
-        url(apiBase, "/api/v1/memberships", {
-          user_id: userId,
-          account_id: accountId,
-          product_id: productId,
-          plan_id: planId,
-          first: "50",
-        }),
-        { headers: h() },
-      );
-      const body = await readJson(res);
-      if (!res.ok) throw err(res.status, body);
-      return Array.isArray(body?.data) ? body.data : [];
-    },
-    async retrieveMembership(id) {
-      const res = await fetchImpl(url(apiBase, `/api/v1/memberships/${id}`), {
-        headers: h(),
-      });
-      const body = await readJson(res);
-      if (!res.ok) throw err(res.status, body);
-      return body;
-    },
-    async retrievePayment(id) {
-      const res = await fetchImpl(url(apiBase, `/api/v1/payments/${id}`), {
-        headers: h(),
-      });
-      const body = await readJson(res);
-      if (!res.ok) throw err(res.status, body);
-      return body;
-    },
-    async userInfo(accessToken, fetchUserImpl = fetchImpl) {
-      const res = await fetchUserImpl(`${apiBase}/oauth/userinfo`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const body = await readJson(res);
-      if (!res.ok) throw err(res.status, body);
-      return body;
-    },
+    listMemberships: ({ userId, accountId, productId, planId, signal }) => list("memberships", {
+      user_id: userId, account_id: accountId, product_id: productId, plan_id: planId,
+    }, signal),
+    // Payment filters differ from membership filters in the pinned schema.
+    listPayments: ({ userId, accountId, productId, planId, signal }) => list("payments", {
+      query: userId, account_id: accountId, product_ids: productId, plan_ids: planId,
+      order: "created_at", direction: "desc",
+    }, signal),
+    retrieveMembership: (id, signal) => retrieve("memberships", id, signal),
+    retrievePayment: (id, signal) => retrieve("payments", id, signal),
+    retrieveRefund: (id, signal) => retrieve("refunds", id, signal),
+    userInfo: (accessToken) => fetchJson(`${apiBase}/oauth/userinfo`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }, fetchImpl, timeoutMs),
   };
 }

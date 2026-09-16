@@ -61,13 +61,16 @@ Copy `.env.example` to the service env file (outside the repo). Set:
 PUBLIC_BASE_URL=https://web.rekisupplement.com
 PORT=<the port from step 2>
 NODE_ENV=production
-ACCESS_DURATION_DAYS=30
+HOST=127.0.0.1
 DATABASE_PATH=<persistent path, e.g. /var/lib/reki-web/reki-web.sqlite>
 ```
 
 Leave `WHOP_API_KEY`, `WHOP_WEBHOOK_SECRET`, `WHOP_APP_ID`,
-`WHOP_CLIENT_SECRET`, `WHOP_ACCOUNT_ID`, `WHOP_PRODUCT_ID`, `WHOP_PLAN_ID`,
-`WHOP_CHECKOUT_URL`, `SESSION_SECRET` EMPTY. Report each as missing.
+`WHOP_CLIENT_SECRET`, `WHOP_ACCOUNT_ID`, `WHOP_PRODUCT_ID` EMPTY unless the
+owner has already provided them — then set exactly those. Always set
+`WHOP_PLAN_ID=plan_ntTuSfZpGhMJu` and
+`WHOP_CHECKOUT_URL=https://whop.com/checkout/ch_mMNbh5gIMIjL09n/`.
+Report each key as set or missing. Never invent values.
 Ensure the data directory exists and is writable by the service user.
 
 ### 5. Service

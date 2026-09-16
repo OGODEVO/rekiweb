@@ -1505,3 +1505,165 @@ legend {
     transform: none;
   }
 }
+.member-banner[hidden] {
+  display: none;
+}
+.member-banner {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 22px;
+  width: min(600px, calc(100% - 32px));
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  background: #fffdf9;
+  border: 1px solid #e3d9ce;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px -20px #3c2b1c66;
+  padding: 16px 18px;
+}
+.member-banner img {
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+.member-banner strong {
+  display: block;
+  font: 800 16px var(--rounded);
+  letter-spacing: -0.3px;
+}
+.member-banner span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.6;
+}
+.banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.member-banner.expired {
+  border-color: #e3b7a6;
+}
+.tour[hidden] {
+  display: none;
+}
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #221a1399;
+  backdrop-filter: blur(3px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.tour-card {
+  position: relative;
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  max-width: 560px;
+  width: 100%;
+  display: flex;
+  gap: 20px;
+  padding: 28px;
+  align-items: center;
+  box-shadow: 0 30px 90px #00000055;
+}
+.tour-card img {
+  flex-shrink: 0;
+  border-radius: 14px;
+}
+.tour-step {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.tour-card h2 {
+  font: 800 26px var(--rounded);
+  letter-spacing: -0.6px;
+  margin: 6px 0 10px;
+}
+.tour-card p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.tour-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.locked-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  background: #f7ece4;
+  border: 1px solid #e3c4b2;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 18px;
+}
+.locked-card img {
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+.locked-card strong {
+  display: block;
+  font-size: 13px;
+}
+.locked-card span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.locked-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+#tracker.locked .add-circle,
+#tracker.locked .add-stack-button,
+#tracker.locked .checkin-start {
+  display: none;
+}
+.dose-check:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+@media (max-width: 760px) {
+  .tour-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px 20px;
+  }
+  .tour-card img {
+    width: 110px;
+  }
+  .tour-actions {
+    justify-content: center;
+  }
+  .locked-card {
+    flex-wrap: wrap;
+  }
+  .locked-actions {
+    margin-left: 0;
+  }
+}

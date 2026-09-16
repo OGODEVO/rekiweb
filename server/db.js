@@ -57,8 +57,58 @@ export function openDatabase(path) {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   db.exec("PRAGMA journal_mode = WAL;");
-  db.exec(SCHEMA);
+  migrateDatabase(db);
   return db;
+}
+
+export function transaction(db, fn) {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const result = fn();
+    db.exec("COMMIT");
+    return result;
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+export function migrateDatabase(db) {
+  db.exec("PRAGMA busy_timeout = 5000");
+  transaction(db, () => {
+    db.exec(SCHEMA);
+    const additions = {
+      sessions: { csrf_token: "TEXT" },
+      oauth_states: { browser_hash: "TEXT" },
+      tracker_states: { revision: "INTEGER NOT NULL DEFAULT 1" },
+      entitlements: { account_id: "TEXT", payment_id: "TEXT", paid_at: "TEXT", verified_at: "TEXT" },
+      webhook_events: {
+        payload: "TEXT", body_hash: "TEXT", account_id: "TEXT",
+        status: "TEXT NOT NULL DEFAULT 'pending'", attempts: "INTEGER NOT NULL DEFAULT 0",
+        lease_until: "INTEGER NOT NULL DEFAULT 0", next_attempt_at: "INTEGER NOT NULL DEFAULT 0",
+      },
+    };
+    for (const [table, columns] of Object.entries(additions)) {
+      const present = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name));
+      for (const [name, type] of Object.entries(columns))
+        if (!present.has(name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${type}`);
+    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS membership_revocations (
+        membership_id TEXT PRIMARY KEY, cutoff_paid_at TEXT NOT NULL, reason TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS refunded_payments (
+        payment_id TEXT PRIMARY KEY, membership_id TEXT NOT NULL, paid_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS access_checks (
+        whop_user_id TEXT PRIMARY KEY, checked_at TEXT NOT NULL, status TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_webhook_retry ON webhook_events (account_id, status, next_attempt_at);
+      INSERT OR IGNORE INTO membership_revocations (membership_id, cutoff_paid_at, reason)
+        SELECT membership_id, revoked_at, 'legacy' FROM entitlements
+        WHERE revoked_at IS NOT NULL AND payment_id IS NULL;
+    `);
+  });
 }
 
 export function pruneOAuthStates(db, nowIso) {

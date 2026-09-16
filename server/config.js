@@ -11,6 +11,7 @@ function trimSlash(url) {
 }
 
 export const config = {
+  host: process.env.HOST || "127.0.0.1",
   port: asInt(process.env.PORT, 3001),
   nodeEnv: process.env.NODE_ENV || "development",
   publicBaseUrl: trimSlash(process.env.PUBLIC_BASE_URL || ""),
@@ -22,40 +23,59 @@ export const config = {
   clientSecret: process.env.WHOP_CLIENT_SECRET || "",
   accountId: process.env.WHOP_ACCOUNT_ID || "",
   productId: process.env.WHOP_PRODUCT_ID || "",
-  planId: process.env.WHOP_PLAN_ID || "",
+  planId: process.env.WHOP_PLAN_ID || "plan_ntTuSfZpGhMJu",
   checkoutUrl: (process.env.WHOP_CHECKOUT_URL || "").trim(),
-  accessDurationDays: asInt(process.env.ACCESS_DURATION_DAYS, 30),
-  sessionSecret: process.env.SESSION_SECRET || "",
   databasePath: process.env.DATABASE_PATH || "./data/reki-web.sqlite",
 };
 
+export const BILLING = Object.freeze({ price: 15, currency: "USD", intervalDays: 30 });
+export const PAID_PLAN_ID = "plan_ntTuSfZpGhMJu";
+
+export function authConfigured(c) {
+  try {
+    const u = new URL(c.publicBaseUrl);
+    return Boolean(c.appId && !u.username && !u.password && u.pathname === "/" && !u.search && !u.hash &&
+      (u.protocol === "https:" || (c.nodeEnv !== "production" &&
+        u.protocol === "http:" && ["localhost", "127.0.0.1"].includes(u.hostname))));
+  } catch { return false; }
+}
+
+export function billingConfigured(c) {
+  return Boolean(c.apiKey && c.accountId && c.productId && c.planId === PAID_PLAN_ID && c.apiVersionDate === "2026-09-15");
+}
+
 // Safe subset exposed to the browser. No secrets here.
 export function publicConfig(c = config) {
-  const checkoutUrl =
-    c.checkoutUrl && c.checkoutUrl.startsWith("https://")
-      ? c.checkoutUrl
-      : "";
+  let checkoutUrl = "";
+  try {
+    const u = new URL(c.checkoutUrl);
+    if (billingConfigured(c) && u.protocol === "https:" && !u.username && !u.password &&
+      !u.port && ["whop.com", "www.whop.com"].includes(u.hostname) &&
+      u.pathname === "/checkout/ch_mMNbh5gIMIjL09n/" && !u.search && !u.hash)
+      checkoutUrl = u.href;
+  } catch { /* Unconfigured checkout remains private. */ }
   return {
     checkoutConfigured: checkoutUrl !== "",
     checkoutUrl,
-    accessDurationDays: c.accessDurationDays,
+    authConfigured: authConfigured(c),
+    billing: BILLING,
     productTitle: "Reki Web",
   };
 }
 
-export function returnUrl() {
-  return config.publicBaseUrl ? `${config.publicBaseUrl}/api/whop/return` : "";
+export function returnUrl(c = config) {
+  return c.publicBaseUrl ? `${c.publicBaseUrl}/api/whop/return` : "";
 }
 
-export function webhookUrl() {
-  return config.publicBaseUrl
-    ? `${config.publicBaseUrl}/api/webhooks/whop`
+export function webhookUrl(c = config) {
+  return c.publicBaseUrl
+    ? `${c.publicBaseUrl}/api/webhooks/whop`
     : "";
 }
 
-export function oauthCallbackUrl() {
-  return config.publicBaseUrl
-    ? `${config.publicBaseUrl}/api/auth/whop/callback`
+export function oauthCallbackUrl(c = config) {
+  return c.publicBaseUrl
+    ? `${c.publicBaseUrl}/api/auth/whop/callback`
     : "";
 }
 
@@ -68,7 +88,9 @@ export function configWarnings() {
   if (!config.webhookSecret) warnings.push("WHOP_WEBHOOK_SECRET is not set");
   if (!config.appId) warnings.push("WHOP_APP_ID is not set");
   if (!config.productId) warnings.push("WHOP_PRODUCT_ID is not set");
+  if (!config.accountId) warnings.push("WHOP_ACCOUNT_ID is not set");
+  if (config.planId !== PAID_PLAN_ID) warnings.push("WHOP_PLAN_ID is not the recurring Reki plan");
+  if (config.apiVersionDate !== "2026-09-15") warnings.push("WHOP_API_VERSION_DATE must be 2026-09-15");
   if (!config.checkoutUrl) warnings.push("WHOP_CHECKOUT_URL is not set");
-  if (!config.sessionSecret) warnings.push("SESSION_SECRET is not set");
   return warnings;
 }

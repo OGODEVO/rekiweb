@@ -2,9 +2,11 @@
 // Docs: https://docs.whop.com/developer/guides/oauth
 // Sessions are server-side rows; the cookie holds only a random session id.
 
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
+import { fetchJson } from "./whop.js";
 
 export const SESSION_COOKIE = "reki_session";
+export const OAUTH_COOKIE = "reki_oauth";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 function b64url(bytes) {
@@ -24,13 +26,28 @@ export function pkcePair() {
 }
 
 export function parseCookies(header) {
-  const out = {};
+  const out = Object.create(null);
   for (const part of (header || "").split(";")) {
     const i = part.indexOf("=");
     if (i < 0) continue;
-    out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+    const key = part.slice(0, i).trim();
+    try {
+      const value = decodeURIComponent(part.slice(i + 1).trim());
+      out[key] = Object.hasOwn(out, key) ? "" : value;
+    } catch { out[key] = ""; }
   }
   return out;
+}
+
+export function randomToken() { return randomBytes(32).toString("base64url"); }
+export function tokenHash(token) { return createHash("sha256").update(token).digest("hex"); }
+export function equalToken(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || !a || !b) return false;
+  const x = Buffer.from(a), y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+export function oauthCookie(value, secure, clear = false) {
+  return `${OAUTH_COOKIE}=${encodeURIComponent(value)}; Path=/api/auth/whop; HttpOnly; SameSite=Lax; Max-Age=${clear ? 0 : 900}${secure ? "; Secure" : ""}`;
 }
 
 export function sessionCookie(sessionId, { secure }) {
@@ -45,8 +62,8 @@ export function sessionCookie(sessionId, { secure }) {
   return parts.join("; ");
 }
 
-export function clearedSessionCookie() {
-  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+export function clearedSessionCookie(secure = false) {
+  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure ? "; Secure" : ""}`;
 }
 
 export function authorizeUrl({
@@ -90,36 +107,35 @@ export async function exchangeCode(
     code_verifier: verifier,
   };
   if (clientSecret) body.client_secret = clientSecret;
-  const res = await fetchImpl(`${apiBase}/oauth/token`, {
+  return fetchJson(`${apiBase}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const e = new Error("OAuth token exchange failed");
-    e.status = res.status;
-    throw e;
-  }
-  return data;
+  }, fetchImpl);
 }
 
 export function createSession(db, whopUserId, nowMs = Date.now()) {
   const id = b64url(randomBytes(32));
   const now = new Date(nowMs).toISOString();
   db.prepare(
-    "INSERT INTO sessions (id, whop_user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
-  ).run(id, whopUserId, now, new Date(nowMs + SESSION_TTL_MS).toISOString());
+    "INSERT INTO sessions (id, whop_user_id, created_at, expires_at, csrf_token) VALUES (?, ?, ?, ?, ?)",
+  ).run(id, whopUserId, now, new Date(nowMs + SESSION_TTL_MS).toISOString(), randomToken());
   return id;
 }
 
 export function readSession(db, sessionId, nowIso) {
   if (!sessionId) return null;
-  return (
+  const session = (
     db
       .prepare("SELECT * FROM sessions WHERE id = ? AND expires_at > ?")
       .get(sessionId, nowIso) || null
   );
+  if (session && !session.csrf_token) {
+    db.prepare("UPDATE sessions SET csrf_token = ? WHERE id = ? AND csrf_token IS NULL")
+      .run(randomToken(), sessionId);
+    session.csrf_token = db.prepare("SELECT csrf_token FROM sessions WHERE id = ?").get(sessionId).csrf_token;
+  }
+  return session;
 }
 
 export function destroySession(db, sessionId) {
