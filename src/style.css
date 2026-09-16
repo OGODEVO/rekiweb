@@ -1527,6 +1527,11 @@ legend {
 .member-banner img {
   flex-shrink: 0;
   border-radius: 12px;
+  height: 84px;
+  width: auto;
+}
+.member-banner.welcome img {
+  height: 150px;
 }
 .member-banner strong {
   display: block;
@@ -1579,6 +1584,8 @@ legend {
 .tour-card img {
   flex-shrink: 0;
   border-radius: 14px;
+  height: 300px;
+  width: auto;
 }
 .tour-step {
   font-size: 10px;
@@ -1621,6 +1628,8 @@ legend {
 .locked-card img {
   flex-shrink: 0;
   border-radius: 10px;
+  height: 64px;
+  width: auto;
 }
 .locked-card strong {
   display: block;
@@ -1655,7 +1664,7 @@ legend {
     padding: 24px 20px;
   }
   .tour-card img {
-    width: 110px;
+    height: 170px;
   }
   .tour-actions {
     justify-content: center;

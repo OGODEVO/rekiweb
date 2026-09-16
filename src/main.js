@@ -201,7 +201,7 @@ document.querySelector("#app").innerHTML = `
   <div id="member-banner" class="member-banner" hidden></div>
   <div id="tour" class="tour" hidden>
     <div class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tour-title">
-      <img id="tour-image" src="/assets/reki-waving.webp" alt="Reki guiding you" width="160" height="338">
+      <img id="tour-image" src="/assets/reki-waving.webp" alt="Reki guiding you" width="146" height="300">
       <div class="tour-copy">
         <p id="tour-step" class="tour-step">1 of 4</p>
         <h2 id="tour-title">Welcome in.</h2>
@@ -249,7 +249,7 @@ function render(focusKey) {
     .querySelector("#tracker")
     .classList.toggle("locked", paidAccess.locked);
   const lockedCard = paidAccess.locked
-    ? `<div class="locked-card"><img src="/assets/reki-heart.webp" alt="" width="64" height="64"><div><strong>Membership paused.</strong><span>Your history is safe below. Renew to keep tracking.</span></div><div class="locked-actions"><a class="button button-small button-coral" href="#pricing">Renew — $15</a><a class="text-button" href="/api/export" download>Export my data</a></div></div>`
+    ? `<div class="locked-card"><img src="/assets/reki-heart.webp" alt="" width="25" height="64"><div><strong>Membership paused.</strong><span>Your history is safe below. Renew to keep tracking.</span></div><div class="locked-actions"><a class="button button-small button-coral" href="#pricing">Renew — $15</a><a class="text-button" href="/api/export" download>Export my data</a></div></div>`
     : "";
   const row = (item, isStack) =>
     `<div class="supplement-row"><div class="supplement-symbol ${["peach", "sage", "lavender"].includes(item.color) ? item.color : "peach"}">${icon(item.time === "Evening" ? "moon" : "leaf")}</div><div class="supplement-copy"><strong>${esc(item.name)}</strong><span>${esc(item.detail || "No serving note")}${isStack ? ` · ${esc(item.time)}` : ""}</span></div>${isStack ? `<button class="icon-button" data-edit="${esc(item.id)}" aria-label="Edit ${esc(item.name)}">${icon("edit")}</button><button class="icon-button" data-delete="${esc(item.id)}" aria-label="Remove ${esc(item.name)}">${icon("bin")}</button>` : `<button class="dose-check ${current.taken.includes(item.id) ? "taken" : ""}" data-toggle="${esc(item.id)}" aria-label="Mark ${esc(item.name)} ${current.taken.includes(item.id) ? "not taken" : "taken"}" aria-pressed="${current.taken.includes(item.id)}" ${paidAccess.locked ? "disabled" : ""}>${icon("check")}</button>`}</div>`;
@@ -662,7 +662,7 @@ function showWelcomeBanner(until) {
   const banner = document.querySelector("#member-banner");
   banner.className = "member-banner welcome";
   banner.innerHTML =
-    `<img src="/assets/reki-celebrating.webp" alt="" width="96" height="204">` +
+    `<img src="/assets/reki-celebrating.webp" alt="" width="100" height="150">` +
     `<div><strong>You're in. Membership active until ${fmtDate(until)}.</strong>` +
     `<span>Your stack is backed up. Want the 30-second tour?</span>` +
     `<div class="banner-actions"><button class="button button-small button-coral" id="banner-tour">Show me around</button>` +
@@ -676,7 +676,7 @@ function showExpiredBanner() {
   const banner = document.querySelector("#member-banner");
   banner.className = "member-banner expired";
   banner.innerHTML =
-    `<img src="/assets/reki-heart.webp" alt="" width="72" height="72">` +
+    `<img src="/assets/reki-heart.webp" alt="" width="33" height="84">` +
     `<div><strong>Membership paused.</strong>` +
     `<span>Your history is safe. Renew to keep tracking.</span>` +
     `<div class="banner-actions"><a class="button button-small button-coral" href="#pricing">Renew — $15</a>` +
@@ -690,7 +690,7 @@ function showSigninBanner() {
   const banner = document.querySelector("#member-banner");
   banner.className = "member-banner signin";
   banner.innerHTML =
-    `<img src="/assets/reki-waving.webp" alt="" width="72" height="152">` +
+    `<img src="/assets/reki-waving.webp" alt="" width="41" height="84">` +
     `<div><strong>Bought Reki Web?</strong>` +
     `<span>Sign in with Whop to link your purchase.</span>` +
     `<div class="banner-actions"><button class="button button-small button-dark" id="banner-signin">Sign in</button>` +
