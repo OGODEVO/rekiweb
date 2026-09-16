@@ -149,7 +149,7 @@ document.querySelector("#app").innerHTML = `
             <button id="tab-insights" role="tab" aria-controls="tracker-content" data-tab="insights">${icon("chart")} How I feel</button>
           </div>
           <div id="tracker-content" role="tabpanel" tabindex="0"></div>
-          <div class="tracker-bottom"><span>${icon("lock")} <span id="storage-status"></span></span><button class="text-button" id="start-own">Make it yours ${icon("arrow")}</button></div>
+          <div class="tracker-bottom"><span>${icon("lock")} <span id="storage-status"></span></span><span><button class="text-button" id="auth-link">Sign in</button><button class="text-button" id="start-own">Make it yours ${icon("arrow")}</button></span></div>
         </section>
         <div class="product-caption"><span class="caption-line"></span> REAL BUTTONS. YOUR NEXT SMALL STEP.</div>
       </div>
@@ -326,8 +326,23 @@ document.addEventListener("click", (event) => {
     document.querySelector("[data-add]")?.focus();
     announce("Supplement removed.");
   }
-  if (target.id === "beta-button")
+  if (target.id === "beta-button") {
+    if (paidAccess.checkoutUrl) {
+      window.location.href = paidAccess.checkoutUrl;
+      return;
+    }
     document.querySelector("#beta-dialog").showModal();
+  }
+  if (target.id === "auth-link") {
+    if (paidAccess.me?.signedIn) {
+      fetch("/api/auth/logout", { method: "POST" })
+        .catch(() => {})
+        .finally(() => window.location.reload());
+      return;
+    }
+    window.location.href = `/api/auth/whop/start?next=${encodeURIComponent("/#tracker")}`;
+    return;
+  }
 });
 
 document
@@ -423,3 +438,111 @@ function refreshDate() {
 document.addEventListener("visibilitychange", refreshDate);
 setInterval(refreshDate, 30000);
 render();
+
+// Paid access: server-verified Whop membership, account-backed state.
+// No-ops when the page is served without the backend (static preview).
+const paidAccess = { checkoutUrl: "", me: null };
+let serverSyncTimer = null;
+
+async function paidFetch(path, options) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    const res = await fetch(path, { ...options, signal: ctrl.signal });
+    if (!res.ok) return null;
+    return await res.json().catch(() => null);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function queueServerSync() {
+  if (!paidAccess.me?.signedIn || !paidAccess.me?.access?.active) return;
+  clearTimeout(serverSyncTimer);
+  serverSyncTimer = setTimeout(async () => {
+    await paidFetch("/api/state", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        demo: false,
+        supplements: state.supplements,
+        days: state.days,
+      }),
+    });
+  }, 900);
+}
+
+async function initPaidAccess() {
+  const params = new URLSearchParams(window.location.search);
+  const accessParam = params.get("access");
+  if (accessParam === "active" || accessParam === "pending") {
+    params.delete("access");
+    const clean =
+      window.location.pathname +
+      (params.toString() ? `?${params}` : "") +
+      window.location.hash;
+    window.history.replaceState(null, "", clean);
+  }
+  const cfg = await paidFetch("/api/config");
+  if (!cfg) return; // static preview without backend
+  paidAccess.checkoutUrl =
+    typeof cfg.checkoutUrl === "string" ? cfg.checkoutUrl : "";
+  const note = document.querySelector(".checkout-note");
+  if (note && paidAccess.checkoutUrl)
+    note.textContent = "Secure checkout via Whop. No automatic renewal.";
+  const me = await paidFetch("/api/me?refresh=1");
+  paidAccess.me = me;
+  const authLink = document.querySelector("#auth-link");
+  const statusEl = document.querySelector("#storage-status");
+  if (!me?.signedIn) {
+    if (authLink) authLink.textContent = "Sign in";
+    if (accessParam === "pending" || accessParam === "active")
+      announce("Please sign in to link your purchase.");
+    return;
+  }
+  if (authLink) authLink.textContent = "Sign out";
+  if (me.access?.active) {
+    const until = me.access.expiresAt
+      ? new Date(me.access.expiresAt).toLocaleDateString("en", {
+          month: "short",
+          day: "numeric",
+        })
+      : "";
+    if (statusEl)
+      statusEl.textContent = `Signed in · access until ${until} · backed up`;
+    if (accessParam === "active")
+      announce("Payment verified. Access is active.");
+    const remote = await paidFetch("/api/state");
+    const serverState = remote?.state;
+    const serverHasData =
+      serverState &&
+      (serverState.supplements?.length ||
+        Object.keys(serverState.days || {}).length);
+    if (serverHasData && state.demo) {
+      state = {
+        demo: false,
+        supplements: serverState.supplements,
+        days: serverState.days,
+      };
+      save();
+      render();
+      announce("Your saved stack is loaded.");
+    } else if (!serverHasData && !state.demo) {
+      queueServerSync();
+    }
+  } else {
+    if (statusEl) statusEl.textContent = "Signed in · no active access";
+    if (accessParam === "active" || accessParam === "pending")
+      announce("No active purchase found for this account yet.");
+  }
+}
+
+const localSave = save;
+save = function saveAndSync() {
+  localSave();
+  queueServerSync();
+};
+
+initPaidAccess();

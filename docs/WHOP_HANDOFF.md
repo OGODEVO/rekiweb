@@ -47,15 +47,18 @@ The docs list One-time payments, Auto-expire access, and Redirect after checkout
 
 ## Current code and launch blockers
 
-This repository is a local Vite/JavaScript preview, not a finished paid service. It has working browser-local tracking and a checkout placeholder. It does NOT yet implement:
+The repository now implements the paid flow in `server/` (OAuth sign-in,
+server-verified entitlements, signed idempotent webhooks, account-backed
+state, 30-day expiry). What is still missing before any sale:
 
-- Whop sign-in/account linking and returning-customer access.
-- Backend purchase verification, user-scoped entitlements, or expiry enforcement.
-- Verified, idempotent webhook handling for purchase and access revocation.
-- Account-backed data persistence, backup/export, or read-only access after expiry.
-- A production deployment, real checkout redirect, or finalized web privacy/terms.
+- HR-confirmed public `https://` domain (`PUBLIC_BASE_URL`), so the three
+  URLs in `docs/DEPLOY.md` (return, webhook, OAuth callback) can be registered.
+- Whop-side values from this handoff's product setup: company, product, and
+  plan IDs plus the hosted checkout URL, placed in server env (never GitHub).
+- End-to-end verification per `docs/DEPLOY.md` (test purchase, expiry,
+  refund/revocation). Checkout stays unlisted until then.
 
-The proposed delivery flow is payment -> sign-in/account link -> server-verified one-month access -> saved tracker. A redirect or browser flag is not proof of payment. Whop expiry must also be enforced server-side in Reki Web. Read-only history/export after expiry is planned, not built; do not promise it in checkout yet.
+The proposed delivery flow is payment -> sign-in/account link -> server-verified one-month access -> saved tracker. A redirect or browser flag is not proof of payment. Whop expiry is also enforced server-side in Reki Web. Read-only history/export after expiry is planned, not built; do not promise it in checkout yet.
 
 Do not connect live payments or advertise paid availability until the code agent completes and tests fulfillment. The iPhone app and its StoreKit subscriptions remain separate and unchanged.
 

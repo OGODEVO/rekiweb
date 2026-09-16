@@ -141,8 +141,12 @@ test("keeps the proposed purchase honest and disconnected", async ({
 }) => {
   await expect(page.locator(".price")).toContainText("3.99");
   await expect(page.locator(".price-period")).toContainText("for one month");
-  await expect(page.locator(".price-subtitle")).toContainText("No automatic renewal");
-  await expect(page.locator(".terms-note")).toContainText("Access ends after one month");
+  await expect(page.locator(".price-subtitle")).toContainText(
+    "No automatic renewal",
+  );
+  await expect(page.locator(".terms-note")).toContainText(
+    "Access ends after one month",
+  );
   await expect(page.locator("#app")).not.toContainText(/lifetime|\$19/i);
   await page.getByRole("button", { name: "Get one month for $3.99" }).click();
   await expect(

@@ -536,6 +536,9 @@ h1 > span {
 .tracker-bottom .text-button {
   font-size: 9px;
 }
+.tracker-bottom > span:last-child {
+  gap: 14px;
+}
 .product-caption {
   display: flex;
   align-items: center;

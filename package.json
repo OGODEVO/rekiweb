@@ -7,12 +7,16 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
+    "server": "node server/index.js",
+    "start": "node server/index.js",
     "assets": "node scripts/prepare-assets.mjs",
-    "test": "playwright test"
+    "test": "node --test tests/server/*.test.js && playwright test",
+    "test:server": "node --test tests/server/*.test.js"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.0",
-    "@fontsource/nunito-sans": "^5.2.0"
+    "@fontsource/nunito-sans": "^5.2.0",
+    "express": "^4.22.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

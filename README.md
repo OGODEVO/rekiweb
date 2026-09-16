@@ -1,14 +1,23 @@
-# Reki Web local preview
+# Reki Web
 
-Separate from the iPhone app and all existing Reki projects. No production API calls, accounts, analytics, payments, or cloud sync.
+Separate from the iPhone app and all existing Reki projects.
 
-Support: admin@rekisupplement.org. Product/checkout setup instructions: [Whop handoff](docs/WHOP_HANDOFF.md).
+Support: admin@rekisupplement.org. Product/checkout setup: [Whop handoff](docs/WHOP_HANDOFF.md). Deploy: [deploy handoff](docs/DEPLOY.md).
 
 ## Run
+
+Frontend preview:
 
 ```sh
 npm install
 npm run dev -- --port 5173
+```
+
+Paid-access server (needs env from `.env.example`, never commit `.env`):
+
+```sh
+npm run build
+npm run server # serves dist/ + API on $PORT (default 3001)
 ```
 
 The included optimized mascot assets come from the local Rekianime folder (face) and iOS asset catalog (transparent waving character). Originals are unchanged. To regenerate on this Mac: `npm run assets`.
@@ -24,14 +33,18 @@ The included optimized mascot assets come from the local Rekianime folder (face)
 
 ## Offer boundaries
 
-Reki Web, $3.99 USD paid once for one month of core web tracker beta access. No automatic renewal or subsequent automatic charge; paid access ends after one month. Separate from Reki Pro/iPhone. AI scanning and iPhone app access are not included. Checkout and access expiry are not implemented in this local preview; no purchase can be made.
+Reki Web, $3.99 USD paid once for one month of core web tracker beta access. No automatic renewal or subsequent automatic charge; paid access ends after one month. Separate from Reki Pro/iPhone. AI scanning and iPhone app access are not included.
 
-The beta access button explicitly explains checkout is not connected. Before a public paid launch: owner-approved Whop product and offer terms, verified payment/membership access, appropriate privacy/terms and data protection, and a backup/export strategy. Local storage is not paid-access enforcement and must not be treated as such.
+Access is granted only by a server-verified Whop membership recorded as an
+entitlement; checkout redirects alone unlock nothing. Expiry, refunds, and
+deactivation revoke access. Checkout stays unlisted until the flow in
+`docs/DEPLOY.md` is verified end to end.
 
 ## Verify
 
 ```sh
 npm run build
+npm run test:server
 npx playwright install chromium
 npm test
 ```
