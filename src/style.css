@@ -506,6 +506,8 @@ h1 > span {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 8px;
   gap: 10px;
   font-size: 9px;
   color: var(--muted);
@@ -534,7 +536,9 @@ h1 > span {
   display: none;
 }
 .tracker-bottom .text-button {
-  font-size: 9px;
+  font-size: 12px;
+  padding: 8px 4px;
+  white-space: nowrap;
 }
 .tracker-bottom > span:last-child {
   gap: 14px;
@@ -1347,7 +1351,7 @@ legend {
   }
   .tracker-bottom {
     padding: 15px 20px;
-    font-size: 9px;
+    font-size: 10px;
   }
   .values-strip > .wrap {
     flex-direction: column;
