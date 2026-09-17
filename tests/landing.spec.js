@@ -45,7 +45,7 @@ test("explains first action, free/member boundary, monthly tax, and legal routes
   await expect(comparison).toContainText("This browser only");
   await expect(comparison).toContainText("Your Reki Web account");
   await expect(page.locator("#billing-disclosure")).toContainText(
-    "Applicable tax is added at checkout",
+    "Tax added at checkout",
   );
   await expect(page.locator("#app")).not.toContainText(
     /every 30 days|checkout is not enabled here|\$15\.90|money-back guarantee\s+included/i,
