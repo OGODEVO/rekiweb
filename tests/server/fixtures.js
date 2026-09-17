@@ -44,6 +44,7 @@ export async function harness(t, overrides = {}) {
     async retrieveMembership(id) { const m = memberships.find((v) => v.id === id); if (!m) throw new Error("not found"); return structuredClone(m); },
     async retrievePayment(id) { const p = payments.find((v) => v.id === id); if (!p) throw new Error("not found"); return structuredClone(p); },
     async retrieveRefund(id) { const r = refunds.find((v) => v.id === id); if (!r) throw new Error("not found"); return structuredClone(r); },
+    async retrieveUser(id) { return { id, email: null }; },
     async userInfo() { return { sub: "user_a", name: "A" }; },
   };
   const fetchImpl = async (url, options) => {

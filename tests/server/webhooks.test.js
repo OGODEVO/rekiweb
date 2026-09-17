@@ -168,3 +168,43 @@ it("parallel duplicate deliveries never acknowledge an unfinished lease as compl
   assert.equal((await first).status, 200);
   assert.equal(h.db.prepare("SELECT attempts FROM webhook_events").get().attempts, 1);
 });
+
+it("payment email links the buyer for native login (email lives on payment)", async (t) => {
+  const h = await harness(t);
+  h.payments[0].email = "paymail@example.com";
+  assert.equal((await h.send("payment.succeeded", "pay_a", "msg_paymail")).status, 200);
+  assert.equal(
+    h.db.prepare("SELECT email FROM users WHERE whop_user_id=?").get("user_a")?.email,
+    "paymail@example.com",
+  );
+  await h.request("/api/auth/magic/start", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "paymail@example.com" }),
+  });
+  const token = new URL(h.mail[0].url.match(/https:[^"<>]+/)[0]).searchParams.get("token");
+  const verified = await h.request(`/api/auth/magic/verify?token=${encodeURIComponent(token)}`);
+  const cookie = verified.headers.get("set-cookie").split(";")[0];
+  const me = await (await h.request("/api/me?refresh=1", { headers: { cookie } })).json();
+  assert.equal(me.user.id, "user_a");
+  assert.equal(me.access.active, true);
+});
+
+it("membership-only event links via that membership's own payment", async (t) => {
+  const h = await harness(t);
+  h.payments[0].email = "hist@example.com";
+  assert.equal((await h.send("membership.activated", "mem_a", "msg_monly")).status, 200);
+  assert.equal(
+    h.db.prepare("SELECT email FROM users WHERE whop_user_id=?").get("user_a")?.email,
+    "hist@example.com",
+  );
+});
+
+it("never links another membership's buyer email", async (t) => {
+  const h = await harness(t);
+  h.payments.push({ ...h.payments[0], id: "pay_other", membership: { id: "mem_other" }, email: "stranger@example.com" });
+  assert.equal((await h.send("membership.activated", "mem_a", "msg_stranger")).status, 200);
+  assert.equal(
+    h.db.prepare("SELECT email FROM users WHERE whop_user_id=?").get("user_a")?.email ?? null,
+    null,
+  );
+});

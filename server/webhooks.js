@@ -56,19 +56,33 @@ function pickEmail(...values) {
   return "";
 }
 
-async function resolveBuyerEmail(api, { membership, payment, signal }) {
+async function resolveBuyerEmail(api, { membership, payment, signal, cfg }) {
+  // Proven source: the payment object carries the buyer email. The membership
+  // object does not, and the user object redacts it without extra scope.
   const direct = pickEmail(
-    membership?.user, payment?.user, payment?.customer, payment,
-    membership?.customer, membership,
+    payment, payment?.user, payment?.customer,
+    membership?.member, membership?.user, membership?.customer, membership,
   );
   if (direct) return direct;
   if (typeof membership?.user_id === "string" && membership.user_id.startsWith("user_")) {
     try {
       const user = await api.retrieveUser(membership.user_id, signal);
-      return pickEmail(user);
-    } catch {
-      return "";
-    }
+      const viaUser = pickEmail(user);
+      if (viaUser) return viaUser;
+    } catch { /* redacted or unavailable; try payment history */ }
+    // Membership-only events carry no payment context. Best effort: the
+    // newest payment actually recorded against THIS membership. Anything
+    // else (different membership, no email) is ignored, never linked.
+    try {
+      const payments = await api.listPayments({ userId: membership.user_id });
+      const mine = (Array.isArray(payments) ? payments : [])
+        .filter((p) => p?.membership?.id === membership.id)
+        .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+      for (const p of mine) {
+        const email = pickEmail(p, p.user, p.customer);
+        if (email) return email;
+      }
+    } catch { /* listing unavailable; linking waits for a payment event */ }
   }
   return "";
 }
@@ -107,7 +121,7 @@ export async function processWebhook(db, api, access, id, cfg) {
       // Whop identity, so a later native (magic-link) sign-in with the same
       // email lands on this exact owner id with access intact.
       try {
-        const email = await resolveBuyerEmail(api, { membership, payment, signal });
+        const email = await resolveBuyerEmail(api, { membership, payment, signal, cfg });
         if (email) {
           linkWhopEmail(db, {
             whopUserId: membership.user_id,
