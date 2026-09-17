@@ -83,7 +83,7 @@ test("introduces paid account saving after a first meaningful preview action", a
     .click();
   await expect(
     page.getByRole("dialog", { name: "Your routine, beyond this browser." }),
-  ).toContainText("$15 USD per month, plus applicable tax");
+  ).toContainText("$4.99 USD per month, plus applicable tax");
   await page
     .getByRole("button", { name: "Keep using this browser for free" })
     .click();

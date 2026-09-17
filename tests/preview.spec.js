@@ -189,18 +189,18 @@ test("compares taken and skipped days without inventing verdicts", async ({
 test("keeps the proposed purchase honest and disconnected", async ({
   page,
 }) => {
-  await expect(page.locator(".price")).toContainText("15");
+  await expect(page.locator(".price")).toContainText("4.99");
   await expect(page.locator(".price-period")).toContainText("per month");
   await expect(page.locator(".price-subtitle")).toContainText(
     "Cancel anytime in Whop",
   );
-  await expect(page.locator(".terms-note")).toContainText("$15 USD per month");
+  await expect(page.locator(".terms-note")).toContainText("$4.99 USD per month");
   await expect(page.locator("#app")).not.toContainText(
     /lifetime|\$19|\$3\.99|for one month/i,
   );
   await page
     .getByRole("button", {
-      name: "Start my membership — $15/month",
+      name: "Start my membership — $4.99/month",
       exact: true,
     })
     .click();
@@ -217,7 +217,7 @@ const paidConfig = {
   checkoutConfigured: true,
   checkoutUrl: "https://whop.com/checkout/ch_mMNbh5gIMIjL09n/",
   authConfigured: true,
-  billing: { price: 15, currency: "USD", intervalDays: 30 },
+  billing: { price: 4.99, currency: "USD", intervalDays: 30 },
   productTitle: "Reki Web",
 };
 
@@ -310,7 +310,7 @@ test("locks expired members read-only with export and renew", async ({
     "Membership paused",
   );
   await expect(page.locator('#member-banner a[href="#pricing"]')).toContainText(
-    "Renew — $15",
+    "Renew — $4.99",
   );
   await expect(
     page.locator('#member-banner a[href="/api/export"]'),
@@ -320,7 +320,7 @@ test("locks expired members read-only with export and renew", async ({
   ).toBeDisabled();
   await expect(page.locator(".locked-card")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Renew membership — $15" }),
+    page.getByRole("button", { name: "Renew membership — $4.99" }),
   ).toBeVisible();
 });
 

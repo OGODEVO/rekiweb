@@ -105,7 +105,7 @@ it("a partial reconciliation failure rolls back grants and marks verification un
   const h = await harness(t);
   await h.access.refresh("user_a");
   const previous = h.db.prepare("SELECT * FROM entitlements").get();
-  h.payments[0].refunded_amount = 15;
+  h.payments[0].refunded_amount = 4.99;
   h.payments[0].paid_at = null;
   await assert.rejects(h.access.refresh("user_a"));
   assert.deepEqual(h.db.prepare("SELECT * FROM entitlements").get(), previous);

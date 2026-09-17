@@ -33,7 +33,7 @@ The included optimized mascot assets come from the local Rekianime folder (face)
 
 ## Offer boundaries
 
-Reki Web membership: $15 USD now, then $15 every 30 days through Whop
+Reki Web membership: $4.99 USD per month through Whop
 (`plan_ntTuSfZpGhMJu`). Manage or cancel in Whop; access covers time already
 paid. Separate from Reki Pro/iPhone. AI scanning and iPhone app access are
 not included.

@@ -24,7 +24,7 @@ checkout/sign-in, real support email, clear tax/cancellation copy, and legal lin
 
 ## Billing and checkout
 
-Public copy now matches the reported Whop checkout wording: $15 USD per month,
+Public copy now matches the reported Whop checkout wording: $4.99 USD per month,
 auto-renewing until canceled, plus applicable tax. Do not advertise $15.90 as a
 universal total; tax varies. This is a copy change, not a plan interval change.
 The provider's actual renewal date is the customer-facing authority. HR should

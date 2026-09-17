@@ -6,11 +6,11 @@ const write = (h, headers, state = tracker(), revision = 0) => h.request("/api/s
   method: "PUT", headers, body: JSON.stringify({ state, revision }),
 });
 
-it("exposes the $15 recurring contract without credentials", async (t) => {
+it("exposes the $4.99 recurring contract without credentials", async (t) => {
   const h = await harness(t);
   const result = await (await h.request("/api/config")).json();
   assert.deepEqual(result, { checkoutConfigured: true, checkoutUrl: h.cfg.checkoutUrl,
-    authConfigured: true, billing: { price: 15, currency: "USD", intervalDays: 30 }, productTitle: "Reki Web" });
+    authConfigured: true, billing: { price: 4.99, currency: "USD", intervalDays: 30 }, productTitle: "Reki Web" });
   assert.deepEqual(await (await h.request("/api/me")).json(), { signedIn: false, access: { active: false } });
 });
 

@@ -20,7 +20,7 @@ export function membership(now, overrides = {}) {
 export function payment(now, m = membership(now), overrides = {}) {
   return { id: "pay_a", membership: { id: m.id }, user: { id: m.user_id }, company: { id: cfg.accountId },
     product: { id: m.product_id }, plan: { id: m.plan_id }, status: "paid", substatus: "succeeded",
-    currency: "usd", subtotal: 15, total: 15, billing_reason: "subscription_cycle", auto_refunded: false,
+    currency: "usd", subtotal: 4.99, total: 4.99, billing_reason: "subscription_cycle", auto_refunded: false,
     refunded_amount: 0, refunded_at: null, created_at: iso(now - DAY), paid_at: iso(now - DAY + 1000), ...overrides };
 }
 export const tracker = (name = "Vitamin D") => ({

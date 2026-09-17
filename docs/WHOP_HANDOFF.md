@@ -11,8 +11,8 @@ Support/customer contact email: admin@rekisupplement.org
 
 - Title: Reki Web
 - Headline: Track your supplements. See how you feel.
-- Plan/internal name: Monthly membership — $15 now, then $15 every 30 days
-- Price: $15 USD now, then $15 every 30 days (recurring).
+- Plan/internal name: Monthly membership — $4.99 per month
+- Price: $4.99 USD per month (recurring).
 - Payment type: Recurring membership. No free trial.
 - Plan ID: `plan_ntTuSfZpGhMJu`. Checkout:
   `https://whop.com/checkout/ch_mMNbh5gIMIjL09n/`.
@@ -23,7 +23,7 @@ Support/customer contact email: admin@rekisupplement.org
 
 Description:
 
-> A friendly browser-based supplement tracker. Organize your stack and serving notes, check off your daily routine, and record your energy, sleep, and mood. $15 now, then $15 every 30 days. Manage or cancel in Whop. Reki Web is separate from the Reki iPhone app: this purchase does not unlock Reki Pro. AI scanning is not included. Personal tracking only, not medical advice or proof that a supplement works.
+> A friendly browser-based supplement tracker. Organize your stack and serving notes, check off your daily routine, and record your energy, sleep, and mood. $4.99 per month. Manage or cancel in Whop. Reki Web is separate from the Reki iPhone app: this purchase does not unlock Reki Pro. AI scanning is not included. Personal tracking only, not medical advice or proof that a supplement works.
 
 ## Brand
 
@@ -36,7 +36,7 @@ Description:
 
 ## Checkout and delivery
 
-1. Confirm the checkout summary displays $15 USD now and every 30 days on plan `plan_ntTuSfZpGhMJu`. Report any buyer-facing fees/tax behavior and the seller fee schedule; do not claim a guaranteed net margin.
+1. Confirm the checkout summary displays $4.99 USD per month. NOTE: the Whop plan itself must be repriced to $4.99 (likely a new plan ID) and VPS WHOP_PLAN_ID + WHOP_CHECKOUT_URL updated to match, or the server will reject payments. Report any buyer-facing fees/tax behavior and the seller fee schedule; do not claim a guaranteed net margin.
 2. Confirm access follows the paid-through period (recurring), not a fixed grant. Do not substitute a one-time plan; report the blocker if the plan type is wrong.
 3. Use a hosted Whop checkout link. Return its URL and the company, product, and plan IDs to the code agent. These IDs are not secrets.
 4. Configure post-checkout redirect only once the code/deployment agent supplies the real public HTTPS return URL. Do not use localhost or invent a production domain/path.
@@ -71,6 +71,6 @@ Do not connect live payments or advertise paid availability until the code agent
 - Exact price, currency, non-recurring status, access duration, expiry setting, and visibility.
 - Screenshots of saved pricing/expiry and checkout summary, with private details redacted.
 - Confirm support email is admin@rekisupplement.org.
-- Actual fees discovered and whether $15 meets minimum price requirements.
+- Actual fees discovered and whether $4.99 meets minimum price requirements.
 - Redirect/experience integration status, test evidence, and remaining blockers.
 - Do not mark ready to sell until the full payment-to-access flow is verified.

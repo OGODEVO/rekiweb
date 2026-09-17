@@ -37,7 +37,7 @@ export const config = {
     ? Number.parseInt(process.env.MAGIC_LINK_TTL_MIN, 10) : 15),
 };
 
-export const BILLING = Object.freeze({ price: 15, currency: "USD", intervalDays: 30 });
+export const BILLING = Object.freeze({ price: 4.99, currency: "USD", intervalDays: 30 });
 export const PAID_PLAN_ID = "plan_ntTuSfZpGhMJu";
 
 export function authConfigured(c) {
