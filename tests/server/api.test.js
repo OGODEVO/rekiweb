@@ -19,7 +19,7 @@ it("paid sessions get identity, CSRF, revisions, and export; URL flags never gra
   const res = await h.request("/api/me", { headers });
   const me = await res.json();
   assert.equal(res.headers.get("cache-control"), "no-store");
-  assert.deepEqual(me.user, { id: "user_a", name: "user_a" });
+  assert.deepEqual(me.user, { id: "user_a", email: null, name: "user_a" });
   assert.equal(me.csrfToken, headers["x-csrf-token"]);
   assert.equal(me.access.active, true);
   assert.equal(me.access.expiresAt, h.memberships[0].current_period_end);

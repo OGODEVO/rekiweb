@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual, createHash } from "node:crypto";
 import { membershipInScope, paymentInScope, revokeMembership, timestamp } from "./entitlements.js";
 import { billingConfigured } from "./config.js";
+import { linkWhopEmail, normalizeEmail } from "./auth.js";
 
 export function verifyWebhookSignature(rawBody, getHeader, secret, nowMs = Date.now()) {
   const id = getHeader("webhook-id"), ts = getHeader("webhook-timestamp"), signature = getHeader("webhook-signature");
@@ -47,6 +48,31 @@ export function enqueueWebhook(db, envelope, headerId, rawBody, cfg) {
   return headerId;
 }
 
+function pickEmail(...values) {
+  for (const v of values) {
+    const email = normalizeEmail(typeof v === "object" && v !== null ? v.email : v);
+    if (email) return email;
+  }
+  return "";
+}
+
+async function resolveBuyerEmail(api, { membership, payment, signal }) {
+  const direct = pickEmail(
+    membership?.user, payment?.user, payment?.customer, payment,
+    membership?.customer, membership,
+  );
+  if (direct) return direct;
+  if (typeof membership?.user_id === "string" && membership.user_id.startsWith("user_")) {
+    try {
+      const user = await api.retrieveUser(membership.user_id, signal);
+      return pickEmail(user);
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
 export async function processWebhook(db, api, access, id, cfg) {
   const now = Date.now();
   const event = db.prepare("SELECT * FROM webhook_events WHERE webhook_id = ?").get(id);
@@ -77,6 +103,20 @@ export async function processWebhook(db, api, access, id, cfg) {
     }
     if (membershipInScope(membership, cfg) && (!payment || paymentInScope(payment, membership, cfg))) {
       userId = membership.user_id;
+      // Payment-to-account link: resolve the buyer email and attach it to the
+      // Whop identity, so a later native (magic-link) sign-in with the same
+      // email lands on this exact owner id with access intact.
+      try {
+        const email = await resolveBuyerEmail(api, { membership, payment, signal });
+        if (email) {
+          linkWhopEmail(db, {
+            whopUserId: membership.user_id,
+            email,
+            name: membership.user?.name || payment?.user?.name || null,
+            nowIso: new Date().toISOString(),
+          });
+        }
+      } catch { /* Email linking is best-effort; the grant below stands on its own. */ }
       if (refund?.status === "succeeded")
         revokeMembership(db, membership.id, payment.paid_at, { paymentId: payment.id, reason: "refund" });
       if (data.type === "membership.deactivated")

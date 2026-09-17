@@ -2018,3 +2018,5 @@ legend {
     width: 100%;
   }
 }
+#magic-status{font-size:12px;color:var(--muted);line-height:1.7;margin:12px 0;min-height:20px}
+#magic-form .button:disabled{opacity:.7;cursor:default}

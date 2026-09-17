@@ -337,6 +337,40 @@ test("asks signed-out buyers to sign in to link purchase", async ({ page }) => {
   );
 });
 
+test("signs in with an email magic link, no Whop redirect", async ({
+  page,
+}) => {
+  await page.route("**/api/config", (route) =>
+    route.fulfill({ json: paidConfig }),
+  );
+  await page.route("**/api/me**", (route) =>
+    route.fulfill({ json: { signedIn: false, access: { active: false } } }),
+  );
+  let posted = null;
+  await page.route("**/api/auth/magic/start", async (route) => {
+    posted = route.request().postDataJSON();
+    if (!/^\S+@\S+\.\S+$/.test(posted.email)) {
+      posted = null;
+      return route.fulfill({ status: 400, json: { error: "bad" } });
+    }
+    return route.fulfill({ json: { ok: true } });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Sign in with email." });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Email").fill("buyer@example.com");
+  await dialog.getByRole("button", { name: "Email me a sign-in link" }).click();
+  await expect(dialog).toContainText("Check your inbox");
+  expect(posted).toEqual({ email: "buyer@example.com" });
+  // Invalid address is rejected inline, nothing sent.
+  posted = null;
+  await dialog.getByLabel("Email").fill("not-an-email");
+  await dialog.getByRole("button", { name: "Email me a sign-in link" }).click();
+  await expect(dialog).toContainText("valid email");
+  expect(posted).toBeNull();
+});
+
 test("supports keyboard tab navigation and escape from dialogs", async ({
   page,
 }) => {

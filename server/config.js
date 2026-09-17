@@ -26,6 +26,10 @@ export const config = {
   planId: process.env.WHOP_PLAN_ID || "plan_ntTuSfZpGhMJu",
   checkoutUrl: (process.env.WHOP_CHECKOUT_URL || "").trim(),
   databasePath: process.env.DATABASE_PATH || "./data/reki-web.sqlite",
+  mailFrom: (process.env.MAIL_FROM || "").trim(),
+  resendApiKey: (process.env.RESEND_API_KEY || "").trim(),
+  magicLinkTtlMin: (Number.parseInt(process.env.MAGIC_LINK_TTL_MIN, 10) > 0
+    ? Number.parseInt(process.env.MAGIC_LINK_TTL_MIN, 10) : 15),
 };
 
 export const BILLING = Object.freeze({ price: 15, currency: "USD", intervalDays: 30 });

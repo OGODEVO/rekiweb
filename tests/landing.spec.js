@@ -55,7 +55,7 @@ test("explains first action, free/member boundary, monthly tax, and legal routes
     "no account or card needed",
   );
   await expect(page.locator(".after-join")).toContainText(
-    "same account you paid with",
+    "same email you paid with",
   );
   for (const section of ["terms", "privacy", "refunds"]) {
     const response = await page.request.get(`/legal.html#${section}`);

@@ -9,7 +9,9 @@ import { createAccessService } from "./entitlements.js";
 import {
   SESSION_COOKIE, OAUTH_COOKIE, authorizeUrl, clearedSessionCookie, createSession, destroySession,
   exchangeCode, parseCookies, readSession, sessionCookie, upsertUser, randomToken, tokenHash, equalToken, oauthCookie,
+  normalizeEmail, upsertNativeUser, issueMagicToken, consumeMagicToken,
 } from "./auth.js";
+import { mailerConfigured, sendMagicLink } from "./mailer.js";
 import { enqueueWebhook, processWebhook, retryWebhooks, verifyWebhookSignature } from "./webhooks.js";
 import { sanitizeTrackerState, validateTrackerState, storedTrackerState } from "./state.js";
 
@@ -17,9 +19,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const route = (fn) => (req, res, next) => Promise.resolve().then(() => fn(req, res, next)).catch(next);
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 
-export function createApp({ db, cfg = config, whop, fetchImpl = globalThis.fetch, clock = Date.now } = {}) {
+export function createApp({ db, cfg = config, whop, fetchImpl = globalThis.fetch, clock = Date.now, sendMail = null } = {}) {
   const store = db || openDatabase(cfg.databasePath);
   const api = whop || createWhopClient({ apiKey: cfg.apiKey, apiBase: cfg.whopApiBase, versionDate: cfg.apiVersionDate, fetchImpl });
+  const mailer = sendMail || ((args) => sendMagicLink(cfg, args));
   const access = createAccessService(store, api, cfg, clock);
   const app = express();
   app.disable("x-powered-by");
@@ -118,6 +121,45 @@ export function createApp({ db, cfg = config, whop, fetchImpl = globalThis.fetch
     res.setHeader("Set-Cookie", [sessionCookie(sid, { secure }), oauthCookie("", secure, true)]);
     res.redirect(302, destination(access.current(info.sub)));
   }));
+  // ---- native passwordless auth (email magic link) ----
+  app.post("/api/auth/magic/start", express.json({ limit: "4kb" }), route(async (req, res) => {
+    limit(`magic-start:${req.ip}`, 10);
+    const email = normalizeEmail(req.body?.email);
+    if (!email) fail(400, "enter a valid email address");
+    limit(`magic-email:${email}`, 5);
+    const next = req.body?.next === "/api/whop/return" ? "/api/whop/return" : "/#tracker";
+    const token = issueMagicToken(store, { email, next, nowMs: clock(), ttlMin: cfg.magicLinkTtlMin });
+    const url = `${cfg.publicBaseUrl}/api/auth/magic/verify?token=${encodeURIComponent(token)}&next=${encodeURIComponent(next)}`;
+    // Generic success shape whether or not the mail goes out: the address
+    // itself is never confirmed or denied here.
+    try {
+      await mailer({ to: email, url });
+    } catch {
+      // The link can never be delivered; remove it so stale tokens cannot
+      // accumulate or be redeemed through another channel.
+      store.prepare("DELETE FROM magic_tokens WHERE email = ?").run(email);
+      fail(503, "email is unavailable right now; try again later");
+    }
+    res.json({ ok: true });
+  }));
+
+  app.get("/api/auth/magic/verify", route(async (req, res) => {
+    limit(`magic-verify:${req.ip}`, 20);
+    const code = req.query.token;
+    if (typeof code !== "string" || !code || code.length > 512) fail(400, "invalid sign-in link");
+    const row = consumeMagicToken(store, code, new Date(clock()).toISOString());
+    if (!row) fail(400, "this sign-in link is expired or already used");
+    const nowIso = new Date(clock()).toISOString();
+    const user = upsertNativeUser(store, { email: row.email, nowIso });
+    await access.access(user.whop_user_id, { refresh: true }).catch(() => null);
+    const previous = sessionOf(req, false);
+    if (previous) destroySession(store, previous.id);
+    const sid = createSession(store, user.whop_user_id, clock());
+    res.setHeader("Set-Cookie", sessionCookie(sid, { secure }));
+    const next = row.next === "/api/whop/return" ? "/api/whop/return" : "/#tracker";
+    res.redirect(302, next);
+  }));
+
   app.post("/api/auth/logout", route((req, res) => {
     const s = mutation(req);
     destroySession(store, s.id);
@@ -131,8 +173,8 @@ export function createApp({ db, cfg = config, whop, fetchImpl = globalThis.fetch
     if (refresh) limit(`refresh:${s.whop_user_id}`, 6);
     await access.access(s.whop_user_id, { refresh });
     rereadSession(req, s);
-    const user = store.prepare("SELECT name FROM users WHERE whop_user_id=?").get(s.whop_user_id);
-    res.json({ signedIn: true, user: { id: s.whop_user_id, name: user?.name || null }, csrfToken: s.csrf_token, access: access.current(s.whop_user_id) });
+    const user = store.prepare("SELECT email, name FROM users WHERE whop_user_id=?").get(s.whop_user_id);
+    res.json({ signedIn: true, user: { id: s.whop_user_id, email: user?.email || null, name: user?.name || null }, csrfToken: s.csrf_token, access: access.current(s.whop_user_id) });
   }));
   app.get("/api/whop/return", route(async (req, res) => {
     const s = sessionOf(req, false);

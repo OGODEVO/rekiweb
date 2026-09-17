@@ -51,7 +51,9 @@ export async function harness(t, overrides = {}) {
     calls.tokens.push({ url, ...options, body: JSON.parse(options.body) });
     return new Response(JSON.stringify({ access_token: "test-access-token" }));
   };
-  const instance = createApp({ db, cfg: config, whop: api, fetchImpl, clock: () => now });
+  const mail = [];
+  const sendMail = async (args) => { mail.push(args); };
+  const instance = createApp({ db, cfg: config, whop: api, fetchImpl, clock: () => now, sendMail });
   const server = await new Promise((resolve) => { const s = instance.app.listen(0, "127.0.0.1", () => resolve(s)); });
   const base = `http://127.0.0.1:${server.address().port}`;
   t.after(async () => { await new Promise((r) => server.close(r)); db.close(); });
@@ -68,6 +70,6 @@ export async function harness(t, overrides = {}) {
       api_version_date: config.apiVersionDate, account_id: config.accountId, data: { id: resourceId }, ...changes });
     return request("/api/webhooks/whop", { method: "POST", body, headers: signed(body, id, config.webhookSecret) });
   };
-  return { ...instance, db, cfg: config, api, calls, memberships, payments, refunds, request, auth, send,
+  return { ...instance, db, cfg: config, api, calls, mail, memberships, payments, refunds, request, auth, send,
     now: () => now, advance: (ms) => { now += ms; } };
 }

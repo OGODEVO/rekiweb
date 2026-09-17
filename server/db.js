@@ -104,6 +104,12 @@ export function migrateDatabase(db) {
         whop_user_id TEXT PRIMARY KEY, checked_at TEXT NOT NULL, status TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_webhook_retry ON webhook_events (account_id, status, next_attempt_at);
+      CREATE TABLE IF NOT EXISTS magic_tokens (
+        token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL, consumed_at TEXT, next TEXT NOT NULL DEFAULT '/#tracker'
+      );
+      CREATE INDEX IF NOT EXISTS idx_magic_tokens_email ON magic_tokens (email);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email);
       INSERT OR IGNORE INTO membership_revocations (membership_id, cutoff_paid_at, reason)
         SELECT membership_id, revoked_at, 'legacy' FROM entitlements
         WHERE revoked_at IS NOT NULL AND payment_id IS NULL;

@@ -142,6 +142,97 @@ export function destroySession(db, sessionId) {
   db.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
 }
 
+export function normalizeEmail(raw) {
+  const email = String(raw || "").trim().toLowerCase();
+  if (email.length > 320) return "";
+  if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) return "";
+  return email;
+}
+
+// Stable owner id for passwordless accounts. The "local:" prefix can never
+// collide with Whop "user_" ids, so native and OAuth rows share every table.
+export function nativeOwnerId(email) {
+  return `local:${createHash("sha256").update(`reki-native:${email}`).digest("hex").slice(0, 32)}`;
+}
+
+export function findUserByEmail(db, email) {
+  if (!email) return null;
+  return db.prepare("SELECT * FROM users WHERE email = ?").get(email) || null;
+}
+
+// Native sign-in resolves by email first: an existing OAuth row with the same
+// email is reused as-is, so current members keep their id, entitlements, and
+// saved tracker with zero migration step at login time.
+export function upsertNativeUser(db, { email, nowIso }) {
+  const existing = findUserByEmail(db, email);
+  if (existing) return existing;
+  const ownerId = nativeOwnerId(email);
+  const taken = db.prepare("SELECT * FROM users WHERE whop_user_id = ?").get(ownerId);
+  if (taken) return taken;
+  db.prepare(
+    "INSERT INTO users (whop_user_id, email, name, created_at, updated_at) VALUES (?, ?, NULL, ?, ?)",
+  ).run(ownerId, email, nowIso, nowIso);
+  return db.prepare("SELECT * FROM users WHERE whop_user_id = ?").get(ownerId);
+}
+
+export function issueMagicToken(db, { email, next, nowMs = Date.now(), ttlMin = 15 }) {
+  const token = randomToken();
+  const now = new Date(nowMs).toISOString();
+  // Bound outstanding tokens per email so the table cannot grow unbounded.
+  const live = db.prepare(
+    "SELECT COUNT(*) AS n FROM magic_tokens WHERE email = ? AND consumed_at IS NULL AND expires_at > ?",
+  ).get(email, now).n;
+  if (live >= 5) {
+    db.prepare("DELETE FROM magic_tokens WHERE email = ? AND (consumed_at IS NOT NULL OR expires_at <= ?)").run(email, now);
+  }
+  db.prepare(
+    "INSERT INTO magic_tokens (token_hash, email, created_at, expires_at, consumed_at, next) VALUES (?, ?, ?, ?, NULL, ?)",
+  ).run(
+    tokenHash(token), email, now,
+    new Date(nowMs + ttlMin * 60 * 1000).toISOString(), next || "/#tracker",
+  );
+  return token;
+}
+
+// Returns the token row on success, null on expired/unknown/used. Consumes
+// atomically: exactly one caller can redeem a token.
+export function consumeMagicToken(db, token, nowIso) {
+  if (typeof token !== "string" || !token) return null;
+  const hash = tokenHash(token);
+  const row = db.prepare(
+    "SELECT * FROM magic_tokens WHERE token_hash = ? AND consumed_at IS NULL AND expires_at > ?",
+  ).get(hash, nowIso);
+  if (!row) return null;
+  const done = db.prepare(
+    "UPDATE magic_tokens SET consumed_at = ? WHERE token_hash = ? AND consumed_at IS NULL",
+  ).run(nowIso, hash);
+  if (!done.changes) return null; // lost a race; treat as invalid
+  return row;
+}
+
+// Link a Whop identity to its email owner (webhook path). Never merges two
+// different emails: if the Whop row already carries another email, keep it
+// and let the native login resolve through the matching row instead.
+export function linkWhopEmail(db, { whopUserId, email, name, nowIso }) {
+  if (!email) return;
+  const byId = db.prepare("SELECT * FROM users WHERE whop_user_id = ?").get(whopUserId);
+  if (byId) {
+    if (!byId.email) {
+      db.prepare("UPDATE users SET email = ?, name = COALESCE(name, ?), updated_at = ? WHERE whop_user_id = ?")
+        .run(email, name || null, nowIso, whopUserId);
+    }
+    return;
+  }
+  // First sight of this buyer (paid before any sign-in): record the identity
+  // row now so a later native login resolves to this same owner id. Never
+  // attach an email that already belongs to a different owner id.
+  const clash = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+  if (clash) return;
+  db.prepare(
+    "INSERT INTO users (whop_user_id, email, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+  ).run(whopUserId, email, name || null, nowIso, nowIso);
+}
+
 export function upsertUser(db, { whopUserId, email, name, nowIso }) {
   const existing = db
     .prepare("SELECT * FROM users WHERE whop_user_id = ?")

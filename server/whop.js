@@ -46,6 +46,9 @@ export function createWhopClient({ apiKey, apiBase, versionDate, fetchImpl = glo
       order: "created_at", direction: "desc",
     }, signal),
     retrieveMembership: (id, signal) => retrieve("memberships", id, signal),
+    // Buyer identity for webhook email mapping. The shape is provider-defined;
+    // callers read email defensively and never assume it exists.
+    retrieveUser: (id, signal) => retrieve("users", id, signal),
     retrievePayment: (id, signal) => retrieve("payments", id, signal),
     retrieveRefund: (id, signal) => retrieve("refunds", id, signal),
     userInfo: (accessToken) => fetchJson(`${apiBase}/oauth/userinfo`, {

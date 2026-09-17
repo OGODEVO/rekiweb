@@ -206,14 +206,15 @@ document.querySelector("#app").innerHTML = `
       <div class="price-story"><span class="eyebrow">YOUR ROUTINE, BEYOND ONE BROWSER</span><h2 id="price-title">Keep your record.<br>Wherever you log in.</h2><p>Start on your laptop. Return on your phone.<br>$15 USD per month, plus applicable tax.<br>Your saved routine follows your Whop account.</p><img class="waving-reki" src="/assets/reki-waving.webp" alt="Reki smiling and waving" width="480" height="1014" loading="lazy"><span class="mascot-signature">see you tomorrow.</span></div>
       <div class="price-card"><span class="offer-label">REKI WEB · MONTHLY MEMBERSHIP</span><div class="price"><span class="currency">$</span>15<span class="price-period">USD<br>per month</span></div><p class="price-subtitle">$15 USD per month, plus applicable tax. Renews automatically until canceled. Cancel anytime in Whop.</p><ul><li>${icon("check")} Account-backed stack, check-offs & feel logs</li><li>${icon("check")} Load your saved record on another device</li><li>${icon("check")} Recover your last save after clearing browser data</li><li>${icon("check")} Read & export saved data after access ends</li></ul><button class="button button-dark price-button" id="beta-button" aria-describedby="checkout-status billing-disclosure">Start my membership — $15/month ${icon("arrow")}</button><p class="checkout-note" id="checkout-status" role="status" aria-live="polite">Checking membership and checkout availability...</p><p class="terms-note" id="billing-disclosure">$15 USD per month. Applicable tax is added at checkout; Whop shows your total and renewal date before you pay. Manage or cancel in Whop before your next renewal. AI scanning and iPhone app access are not included.</p></div>
     </section>
-    <section class="after-join wrap" aria-labelledby="after-join-title"><img src="/assets/reki-face.webp" alt="" width="56" height="56"><div><h3 id="after-join-title">After you join</h3><ol><li><strong>Pay on Whop.</strong> Review the total, tax, and recurring billing.</li><li><strong>Come back to Reki Web.</strong> Checkout returns you here.</li><li><strong>Sign in with Whop.</strong> Use the same account you paid with. We verify membership and load your tracker.</li></ol><p>Already signed in with active access? The membership button opens your tracker instead of another checkout. If the return is interrupted, come back here and choose Sign in.</p></div></section>
+    <section class="after-join wrap" aria-labelledby="after-join-title"><img src="/assets/reki-face.webp" alt="" width="56" height="56"><div><h3 id="after-join-title">After you join</h3><ol><li><strong>Pay on Whop.</strong> Review the total, tax, and recurring billing.</li><li><strong>Come back to Reki Web.</strong> Checkout returns you here.</li><li><strong>Sign in with your email.</strong> Use the same email you paid with. We verify membership and load your tracker.</li></ol><p>Already signed in with active access? The membership button opens your tracker instead of another checkout. If the return is interrupted, come back here and choose Sign in.</p></div></section>
     <section class="faq wrap" aria-labelledby="faq-title"><div><span class="eyebrow">A FEW LITTLE DETAILS</span><h2 id="faq-title">Good to know.</h2></div><div class="faq-items">
       <details><summary>Is this the Reki iPhone app?<span>+</span></summary><p>No. Reki Web is a separate browser tracker. This offer does not unlock Reki Pro or any paid features in the iPhone app.</p></details>
       <details><summary>What does this preview save?<span>+</span></summary><p>Your stack, daily check-offs, and check-ins stay in this browser's local storage. Nothing is sent to a server. There is no account, cloud backup, or device sync. Clearing browser data removes your record. Avoid shared devices for personal information.</p></details>
       <details><summary>Can it tell me if my supplements work?<span>+</span></summary><p>It helps you record your routine and notice how you feel over time. Self-reported patterns do not establish that a supplement caused a change. Reki does not diagnose conditions or give medical advice.</p></details>
       <details><summary>Do I need a card to try it?<span>+</span></summary><p>No. The interactive preview is free to explore, no account or card needed. Membership is separate: $15 USD per month through Whop, plus applicable tax. It renews automatically until canceled; cancel anytime in Whop.</p></details>
       <details><summary>What if it isn't useful for me?<span>+</span></summary><p>Use the free preview first: add your supplement, check it off, and log how you feel. You don't need to buy to test the routine. Membership pays for account saving, not a promise of health improvement. If you join, you can cancel future renewals in Whop. Review the refund terms at checkout; there is no additional money-back guarantee stated here.</p></details>
-      <details><summary>Is my data private?<span>+</span></summary><p>Free preview entries stay in this browser. When you choose to save a record to your member account, Reki Web stores it on its server and loads it for that signed-in account. Whop handles payment and sign-in; your tracker content is not sent to Whop for billing verification. <a href="/legal.html#privacy">Read the web privacy information</a>.</p></details>
+      <details><summary>Is my data private?<span>+</span></summary><p>Free preview entries stay in this browser. When you choose to save a record to your member account, Reki Web stores it on its server and loads it for that signed-in account. Whop handles payment; sign-in is an email link from Reki. Your tracker content is not sent to Whop for billing verification. <a href="/legal.html#privacy">Read the web privacy information</a>.</p></details>
+      <details><summary>How do I sign in?<span>+</span></summary><p>Enter your email and we send a one-time sign-in link. No password, no Whop sign-in needed. Use the same email you paid with so your membership links to your account.</p></details>
       <details><summary>How do I cancel?<span>+</span></summary><p>Sign in to the Whop account you used to pay and manage your Reki Web membership there. Cancel before your next renewal to stop future charges. Cancellation is separate from a refund request; read the billing and refund terms in checkout. Need help? Email admin@rekisupplement.org.</p></details>
     </div></section>
   </main>
@@ -225,6 +226,7 @@ document.querySelector("#app").innerHTML = `
   <dialog id="beta-dialog" aria-labelledby="beta-title"><div class="dialog-heading"><h2 id="beta-title">Checkout isn't available in this session.</h2><button class="icon-button" data-close aria-label="Close beta details">${icon("close")}</button></div><p>We couldn't load a configured checkout. No payment has been taken. Membership is $15 USD per month, plus applicable tax, and renews automatically until canceled.</p><p>Keep using the free preview, try again, or contact admin@rekisupplement.org.</p><button class="button button-coral" data-close>Back to my routine ${icon("arrow")}</button></dialog>
   <dialog id="membership-dialog" aria-labelledby="membership-title"><div class="dialog-heading"><h2 id="membership-title">Your routine, beyond this browser.</h2><button type="button" class="icon-button" data-close aria-label="Close membership details">${icon("close")}</button></div><img class="membership-mascot" src="/assets/reki-face.webp" alt="Reki" width="60" height="60"><p>Your preview works here for free. Join to save a record to your account and load it on another device with the same Whop sign-in.</p><p><strong>$15 USD per month, plus applicable tax.</strong> Renews automatically until canceled. Cancel future renewals in Whop.</p><p>After payment, return here and Sign in with the same Whop account. Your existing account record is loaded first; preview entries stay separate unless you choose to import them.</p><button type="button" class="button button-coral" id="join-account">Join for account saving ${icon("arrow")}</button><p id="membership-status" role="status" aria-live="polite"></p><button type="button" class="text-button" data-close>Keep using this browser for free</button></dialog>
   <dialog id="import-dialog" aria-labelledby="import-title"><div class="dialog-heading"><h2 id="import-title">Keep the record you started?</h2><button type="button" class="icon-button" data-close aria-label="Close import details">${icon("close")}</button></div><p>This copies this browser's preview into your currently empty account. If you used sample supplements, those entries are included; edit or remove them afterward. Nothing is copied without your confirmation.</p><p id="import-summary"></p><button type="button" class="button button-coral" id="confirm-import">Import my preview</button><button type="button" class="text-button" data-close>Start fresh instead</button></dialog>
+  <dialog id="magic-dialog" aria-labelledby="magic-title"><form id="magic-form" novalidate><div class="dialog-heading"><h2 id="magic-title">Sign in with email.</h2><button type="button" class="icon-button" data-close aria-label="Close sign in">×</button></div><p class="dialog-intro">No password. We email you a one-time link.</p><label>Email<input name="email" type="email" required maxlength="320" placeholder="you@example.com" autocomplete="email"></label><p class="form-note">Use the same email you paid with so we can link your membership.</p><p id="magic-status" role="status" aria-live="polite"></p><button class="button button-coral" type="submit">Email me a sign-in link</button></form></dialog>
   <div id="member-banner" class="member-banner" hidden></div>
   <div id="tour" class="tour" hidden>
     <div class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tour-title">
@@ -560,7 +562,7 @@ document.addEventListener("click", (event) => {
         .finally(() => window.location.reload());
       return;
     }
-    window.location.href = `/api/auth/whop/start?next=${encodeURIComponent("/#tracker")}`;
+    openMagicDialog();
     return;
   }
 });
@@ -860,7 +862,7 @@ function showSigninBanner() {
   banner.innerHTML =
     `<img src="/assets/reki-waving.webp" alt="" width="41" height="84">` +
     `<div><strong>Bought Reki Web?</strong>` +
-    `<span>Sign in with Whop to link your purchase.</span>` +
+    `<span>Sign in with your email to link your purchase.</span>` +
     `<div class="banner-actions"><button class="button button-small button-dark" id="banner-signin">Sign in</button>` +
     `<button class="text-button" id="banner-dismiss">Dismiss</button></div></div>`;
   banner.hidden = false;
@@ -921,6 +923,38 @@ function endTour(finished) {
   }
   announce("Tour finished. Your routine is ready.");
 }
+
+function openMagicDialog() {
+  const status = document.querySelector("#magic-status");
+  if (status) status.textContent = "";
+  document.querySelector("#magic-dialog").showModal();
+  document.querySelector("#magic-form").elements.email.focus();
+}
+
+document.querySelector("#magic-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const status = document.querySelector("#magic-status");
+  const button = form.querySelector('[type="submit"]');
+  button.disabled = true;
+  status.textContent = "Sending your link...";
+  try {
+    const res = await fetch("/api/auth/magic/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: form.elements.email.value }),
+    });
+    if (res.ok) {
+      status.textContent = "Check your inbox — your sign-in link is on its way. It expires in 15 minutes.";
+      form.reset();
+    } else if (res.status === 400) status.textContent = "Enter a valid email address.";
+    else status.textContent = "Email is unavailable right now. Try again later.";
+  } catch {
+    status.textContent = "Couldn't reach the server. Check your connection and retry.";
+  } finally {
+    button.disabled = false;
+  }
+});
 
 // ---------- price card states ----------
 
@@ -1044,7 +1078,7 @@ async function refreshAccess() {
     paidAccess.locked = false;
     hideBanner();
     if (statusEl)
-      statusEl.textContent = `Signed in · access until ${fmtDate(me.access.expiresAt)} · backed up`;
+      statusEl.textContent = me.user?.email ? `Signed in as ${me.user.email} · access until ${fmtDate(me.access.expiresAt)} · backed up` : `Signed in · access until ${fmtDate(me.access.expiresAt)} · backed up`;
     updatePriceCardMember(me.access.expiresAt);
     render();
   } else {
@@ -1100,7 +1134,7 @@ async function initPaidAccess() {
     paidAccess.unlocked = true;
     paidAccess.locked = false;
     if (statusEl)
-      statusEl.textContent = `Signed in · access until ${fmtDate(me.access.expiresAt)} · backed up`;
+      statusEl.textContent = me.user?.email ? `Signed in as ${me.user.email} · access until ${fmtDate(me.access.expiresAt)} · backed up` : `Signed in · access until ${fmtDate(me.access.expiresAt)} · backed up`;
     updatePriceCardMember(me.access.expiresAt);
     const adopted = await adoptServerState("");
     if (!adopted) {
@@ -1175,7 +1209,8 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (target.id === "banner-signin") {
-    window.location.href = `/api/auth/whop/start?next=${encodeURIComponent("/#tracker")}`;
+    hideBanner();
+    openMagicDialog();
   }
 });
 
