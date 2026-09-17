@@ -10,8 +10,8 @@
     "server": "node server/index.js",
     "start": "node server/index.js",
     "assets": "node scripts/prepare-assets.mjs",
-    "test": "node --test tests/server/*.test.js && playwright test",
-    "test:server": "node --test tests/server/*.test.js"
+    "test": "node --test tests/server/*.test.js tests/insights.test.js && playwright test",
+    "test:server": "node --test tests/server/*.test.js tests/insights.test.js"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.0",

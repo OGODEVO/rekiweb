@@ -105,13 +105,9 @@ test("starts a personal stack, edits it and removes it with confirmation", async
   ).toBeVisible();
 });
 
-test("records real ratings, edits today without double-counting", async ({
-  page,
-}) => {
-  await page.getByRole("tab", { name: "How I feel", exact: true }).click();
-  await expect(
-    page.getByText("Your first check-in starts the story."),
-  ).toBeVisible();
+test("records real ratings and writes honest stack reads", async ({ page }) => {
+  await page.getByRole("tab", { name: "Insights", exact: true }).click();
+  await expect(page.getByText("No stack reads yet.")).toBeVisible();
   await page.getByRole("button", { name: "Check in with yourself" }).click();
   for (const [name, value] of [
     ["energy", 4],
@@ -121,19 +117,73 @@ test("records real ratings, edits today without double-counting", async ({
     await page.locator(`input[name="${name}"][value="${value}"]`).check();
   }
   await page.getByRole("button", { name: "Save my check-in" }).click();
-  await expect(page.locator(".metric-grid")).toContainText("4.0");
-  await expect(page.locator(".metric-grid")).toContainText("3.0");
-  await expect(page.locator(".metric-grid")).toContainText("5.0");
+  await expect(
+    page.getByText("Keep logging for a few more days"),
+  ).toHaveCount(3);
+  await expect(page.locator("#tracker-content")).toContainText("1 feel day");
+  await expect(page.locator("#tracker-content")).toContainText(
+    "not medical proof",
+  );
   await page.getByRole("button", { name: "Edit today's check-in" }).click();
   await page.locator('input[name="energy"][value="2"]').check();
   await page.getByRole("button", { name: "Save my check-in" }).click();
-  await expect(page.locator(".averages-caption")).toContainText(
-    "1 recorded day",
-  );
-  await expect(page.locator(".metric-grid")).toContainText("2.0");
+  await expect(
+    page.getByText("Keep logging for a few more days"),
+  ).toHaveCount(3);
   await page.reload();
-  await page.getByRole("tab", { name: "How I feel", exact: true }).click();
-  await expect(page.locator(".metric-grid")).toContainText("2.0");
+  await page.getByRole("tab", { name: "Insights", exact: true }).click();
+  await expect(
+    page.getByText("Keep logging for a few more days"),
+  ).toHaveCount(3);
+});
+
+test("compares taken and skipped days without inventing verdicts", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date("2026-09-16T12:00:00") });
+  await page.evaluate(() => {
+    const days = {};
+    const base = new Date(2026, 8, 10);
+    for (let n = 0; n < 7; n++) {
+      const d = new Date(base);
+      d.setDate(d.getDate() + n);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      days[key] = {
+        taken: n < 5 ? ["d3"] : [],
+        checkin: {
+          energy: n < 5 ? 5 : 2,
+          sleep: 3,
+          mood: 3,
+        },
+      };
+    }
+    localStorage.setItem(
+      "reki-web-preview-v1",
+      JSON.stringify({ demo: true, supplements: [], days }),
+    );
+  });
+  await page.reload();
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem("reki-web-preview-v1"));
+    saved.supplements = [
+      {
+        id: "d3",
+        name: "D3Test",
+        detail: "1",
+        time: "Morning",
+        color: "peach",
+      },
+    ];
+    localStorage.setItem("reki-web-preview-v1", JSON.stringify(saved));
+  });
+  await page.reload();
+  await page.getByRole("tab", { name: "Insights", exact: true }).click();
+  await expect(
+    page.getByText("Energy looks better on days you took it"),
+  ).toBeVisible();
+  await expect(page.locator("#tracker-content")).toContainText(
+    "Still a pattern, not proof.",
+  );
 });
 
 test("keeps the proposed purchase honest and disconnected", async ({
@@ -302,9 +352,7 @@ test("supports keyboard tab navigation and escape from dialogs", async ({
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("suggests supplements from the built-in directory", async ({
-  page,
-}) => {
+test("suggests supplements from the built-in directory", async ({ page }) => {
   await page.getByRole("tab", { name: "My stack", exact: true }).click();
   await page
     .getByRole("button", { name: "Add a supplement", exact: true })

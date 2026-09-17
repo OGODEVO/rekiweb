@@ -6,6 +6,7 @@ import "@fontsource/nunito-sans/latin-700.css";
 import "@fontsource/nunito-sans/latin-800.css";
 import "./style.css";
 import { searchSupplements } from "./supplements-data.js";
+import { computeInsights } from "./insights.js";
 
 const paths = {
   arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
@@ -165,7 +166,7 @@ document.querySelector("#app").innerHTML = `
           <div class="tracker-tabs" role="tablist" aria-label="Tracker views">
             <button id="tab-today" role="tab" aria-controls="tracker-content" data-tab="today">${icon("sun")} Today</button>
             <button id="tab-stack" role="tab" aria-controls="tracker-content" data-tab="stack">${icon("stack")} My stack</button>
-            <button id="tab-insights" role="tab" aria-controls="tracker-content" data-tab="insights">${icon("chart")} How I feel</button>
+            <button id="tab-insights" role="tab" aria-controls="tracker-content" data-tab="insights">${icon("chart")} Insights</button>
           </div>
           <div id="tracker-content" role="tabpanel" tabindex="0"></div>
           <div class="tracker-bottom"><span>${icon("lock")} <span id="storage-status"></span></span><span><button class="text-button" id="tour-replay">Tour</button><button class="text-button" id="auth-link">Sign in</button><button class="text-button" id="start-own">Make it yours ${icon("arrow")}</button></span></div>
@@ -273,20 +274,43 @@ function render(focusKey) {
   } else if (activeTab === "stack") {
     panel.innerHTML = `${lockedCard}<div class="tracker-greeting"><div><p class="tracker-date">YOUR EVERYDAY ESSENTIALS</p><h2>Make it your own.</h2></div><button class="icon-button add-circle" data-add aria-label="Add a supplement">${icon("plus")}</button></div><p class="panel-description">A home for what you take, and when.</p><div class="stack-list">${total ? state.supplements.map((s) => row(s, true)).join("") : empty}</div>${total ? `<button class="add-stack-button" data-add>${icon("plus")} Add a supplement</button>` : ""}<p class="panel-note">${state.demo ? "These are example entries, not supplement or dosage recommendations." : "Your routine belongs to you. Serving notes are a record, not dosage advice."}</p>`;
   } else {
-    const checkins = Object.entries(state.days)
-      .filter(([, value]) => value.checkin)
-      .sort(([a], [b]) => b.localeCompare(a));
-    panel.innerHTML = `${lockedCard}<div class="tracker-greeting"><div><p class="tracker-date">A MOMENT TO NOTICE</p><h2>Your days, in feeling.</h2></div>${icon("chart")}</div><p class="panel-description">Personal observations. No scores to chase.</p>${
-      checkins.length
-        ? `<div class="metric-grid">${["energy", "sleep", "mood"].map((metric) => `<div><span>${metric}</span><strong>${(checkins.reduce((sum, [, value]) => sum + value.checkin[metric], 0) / checkins.length).toFixed(1)}<small>/5</small></strong></div>`).join("")}</div><p class="averages-caption">Averages across ${checkins.length} recorded ${checkins.length === 1 ? "day" : "days"}${state.demo ? " in this preview" : ""}.</p><div class="checkin-history">${checkins
-            .slice(0, 5)
-            .map(
-              ([dateKey, value]) =>
-                `<div><strong>${dateKey === todayKey() ? "Today" : esc(dateKey)}</strong><span>Energy ${value.checkin.energy} · Sleep ${value.checkin.sleep} · Mood ${value.checkin.mood}</span></div>`,
-            )
-            .join("")}</div>`
-        : `<div class="empty-state feeling-empty">${icon("heart")}<h3>Get to know your days.</h3><p>Your first check-in starts the story.<br>Your history will appear here as you go.</p></div>`
-    }<button class="button button-coral checkin-start" id="open-checkin">${current.checkin ? "Edit today's check-in" : "Check in with yourself"} ${icon("plus")}</button><p class="panel-note">Patterns aren't proof. These notes can't tell you whether a supplement caused a change.</p>`;
+    const insights = computeInsights(state.supplements, state.days);
+    const readiness =
+      insights.feelDays < 5
+        ? `<p class="readiness-line">Log ${5 - insights.feelDays} more feel ${5 - insights.feelDays === 1 ? "day" : "days"} to unlock reads.</p>`
+        : "";
+    const cards = insights.cards
+      .map(
+        (card) => `
+      <article class="insight-card verdict-${card.verdict}">
+        <p class="insight-eyebrow">${esc(card.name)} · ${esc(card.metricName)}</p>
+        <h3>${esc(card.headline)}</h3>
+        <p>${esc(card.detail)}</p>
+        <div class="insight-stats"><span>${card.takenDays} taken · ${card.skippedDays} skipped · ${card.adherence}% adherence</span><span class="confidence confidence-${card.confidence}">${card.confidence === "moderate" ? "Moderate" : "Low"} confidence</span></div>
+        <div class="insight-series" aria-hidden="true">${card.series
+          .slice(-14)
+          .map(
+            (d) =>
+              `<span class="${d.didTake ? "taken" : "skipped"}" title="${esc(d.date)}: ${d.value}/5 ${d.didTake ? "taken" : "skipped"}"></span>`,
+          )
+          .join("")}</div>
+      </article>`,
+      )
+      .join("");
+    const empty =
+      !state.supplements.length || !insights.cards.length
+        ? `<div class="empty-state feeling-empty">${icon("heart")}<h3>${
+            !state.supplements.length
+              ? "Add something to your stack first."
+              : "No stack reads yet."
+          }</h3><p>${
+            !state.supplements.length
+              ? "Reads only use supplements you're actually taking."
+              : "Check off doses and log how you feel for a few days — Reki will write up what she notices."
+          }</p></div>`
+        : "";
+    const recordLine = `${insights.streak > 1 ? `${insights.streak}-day logging streak · ` : ""}${insights.feelDays} feel ${insights.feelDays === 1 ? "day" : "days"} · ${insights.stackCount} in stack.`;
+    panel.innerHTML = `${lockedCard}<div class="tracker-greeting"><div><p class="tracker-date">FROM YOUR CHECK-OFFS AND FEEL CHECK-INS</p><h2>Keep, cut, or test.</h2></div>${icon("chart")}</div><p class="panel-description">${recordLine}</p>${readiness}${cards}${empty}<button class="button button-coral checkin-start" id="open-checkin">${current.checkin ? "Edit today's check-in" : "Check in with yourself"} ${icon("plus")}</button><p class="panel-note">Patterns from your logs, not medical proof. We only compare days you actually took vs skipped.</p>`;
   }
   if (focusKey)
     document
@@ -340,10 +364,13 @@ function pickSuggest(i) {
   if (!item) return;
   const form = document.querySelector("#supplement-form");
   form.elements.name.value = item.name;
-  if (!form.elements.detail.value.trim()) form.elements.detail.value = item.serving;
+  if (!form.elements.detail.value.trim())
+    form.elements.detail.value = item.serving;
   form.elements.time.value = item.time;
   closeSuggest();
-  announce(`${item.name} selected. Serving note added — edit it to match your label.`);
+  announce(
+    `${item.name} selected. Serving note added — edit it to match your label.`,
+  );
   form.elements.detail.focus();
 }
 
@@ -359,10 +386,14 @@ nameInput.addEventListener("keydown", (event) => {
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     event.preventDefault();
     suggestIndex =
-      (suggestIndex + (event.key === "ArrowDown" ? 1 : -1) + suggestItems.length) %
+      (suggestIndex +
+        (event.key === "ArrowDown" ? 1 : -1) +
+        suggestItems.length) %
       suggestItems.length;
     renderSuggest();
-    document.querySelector(`#suggest-option-${suggestIndex}`)?.scrollIntoView({ block: "nearest" });
+    document
+      .querySelector(`#suggest-option-${suggestIndex}`)
+      ?.scrollIntoView({ block: "nearest" });
   } else if (event.key === "Enter" && suggestIndex >= 0) {
     event.preventDefault();
     pickSuggest(suggestIndex);
