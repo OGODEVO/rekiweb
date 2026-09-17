@@ -28,6 +28,11 @@ export const config = {
   databasePath: process.env.DATABASE_PATH || "./data/reki-web.sqlite",
   mailFrom: (process.env.MAIL_FROM || "").trim(),
   resendApiKey: (process.env.RESEND_API_KEY || "").trim(),
+  smtpHost: (process.env.SMTP_HOST || "").trim(),
+  smtpPort: Number.parseInt(process.env.SMTP_PORT, 10) > 0 ? Number.parseInt(process.env.SMTP_PORT, 10) : 587,
+  smtpUser: (process.env.SMTP_USER || "").trim(),
+  smtpPass: process.env.SMTP_PASS || "",
+  smtpSecure: process.env.SMTP_SECURE === "true",
   magicLinkTtlMin: (Number.parseInt(process.env.MAGIC_LINK_TTL_MIN, 10) > 0
     ? Number.parseInt(process.env.MAGIC_LINK_TTL_MIN, 10) : 15),
 };

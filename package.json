@@ -16,7 +16,8 @@
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.0",
     "@fontsource/nunito-sans": "^5.2.0",
-    "express": "^4.22.3"
+    "express": "^4.22.3",
+    "nodemailer": "^10.0.10"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

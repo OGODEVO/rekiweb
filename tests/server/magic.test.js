@@ -177,3 +177,38 @@ it("normalizeEmail lowercases and rejects junk", () => {
   assert.equal(nativeOwnerId("a@x.com"), nativeOwnerId("a@x.com"));
   assert.ok(nativeOwnerId("a@x.com").startsWith("local:"));
 });
+
+it("smtp relay sends without a stored password; Resend wins when both set", async () => {
+  const { sendMagicLink } = await import("../../server/mailer.js");
+  const outbox = [];
+  const relay = { sentMail: [], async sendMail(m) { this.sentMail.push(m); return { accepted: [m.to] }; } };
+  const smtpCfg = { mailFrom: "Reki <hello@rekisupplement.com>", smtpHost: "smtp-relay.gmail.com", smtpPort: 587 };
+  const r1 = await sendMagicLink(smtpCfg, { to: "w@x.com", url: "https://x/y" }, async () => {
+    throw new Error("resend must not be called");
+  }, relay);
+  assert.equal(r1.provider, "smtp");
+  assert.equal(relay.sentMail[0].from, "Reki <hello@rekisupplement.com>");
+  assert.equal(relay.sentMail[0].to, "w@x.com");
+  assert.match(relay.sentMail[0].subject, /Reki Web/);
+  // Transport failure fails closed.
+  await assert.rejects(
+    sendMagicLink(smtpCfg, { to: "w@x.com", url: "https://x/y" }, async () => ({}), {
+      async sendMail() { throw new Error("relay down"); },
+    }),
+    /failed/,
+  );
+  // Both configured: Resend takes precedence.
+  const resendCalls = [];
+  const r2 = await sendMagicLink(
+    { ...smtpCfg, resendApiKey: "re_x" },
+    { to: "w@x.com", url: "https://x/y" },
+    async (url, opts) => {
+      resendCalls.push(url);
+      return new Response("{}", { status: 200 });
+    },
+    relay,
+  );
+  assert.equal(r2.provider, "resend");
+  assert.equal(resendCalls.length, 1);
+  assert.equal(relay.sentMail.length, 1);
+});

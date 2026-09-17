@@ -26,9 +26,25 @@ honest "no purchase found" state, never a silent lockout.
   server-side session, redirects to the tracker.
 - Token storage is hash-only; raw tokens never touch the database, logs, or
   error responses.
-- Mail goes through Resend (`MAIL_FROM`, `RESEND_API_KEY`). With no provider
-  configured the endpoint fails closed. No console/log fallback exists by
-  design.
+- Mail goes through Resend (`MAIL_FROM` + `RESEND_API_KEY`) or SMTP
+  (`MAIL_FROM` + `SMTP_HOST`, e.g. Google Workspace relay). Resend wins when
+  both are set. With no provider configured the endpoint fails closed. No
+  console/log fallback exists by design.
+
+## Google Workspace relay (recommended, no stored password)
+
+1. In Google Admin: Apps → Google Workspace → Gmail → Routing → SMTP relay
+   service. Add route for this server: allowed senders restricted to your
+   domain, require SMTP authentication OFF, and allowlist `2.25.174.209`.
+2. Ensure `rekisupplement.com` SPF includes Google (`include:_spf.google.com`)
+   and DKIM is enabled in Admin → Gmail → Authenticate email. Same channel
+   carries Reki's reputation either way; these records are what keep mail in
+   the inbox, not the choice of Resend vs Gmail.
+3. Env on the VPS: `MAIL_FROM=Reki <hello@rekisupplement.com>`,
+   `SMTP_HOST=smtp-relay.gmail.com`, leave `SMTP_USER`/`SMTP_PASS` empty.
+   (Fallback: a mailbox App Password in `SMTP_USER`/`SMTP_PASS` — never a
+   real Google password.)
+4. Restart the service, request a link, confirm delivery, then run E2E.
 - Existing OAuth members keep everything: native login resolves by email to
   the same owner id, so entitlements and saved tracker carry over with no
   migration step at login. Webhook buyer emails attach to Whop identities
