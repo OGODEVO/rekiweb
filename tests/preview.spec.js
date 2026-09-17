@@ -11,7 +11,7 @@ test("loads local brand assets, stays on screen and has no runtime errors", asyn
   page.on("pageerror", (error) => errors.push(error.message));
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Your supplements.",
+    "Know what you took.",
   );
   await expect(
     page.getByText("INTERACTIVE PREVIEW · SAMPLE STACK"),
@@ -117,9 +117,9 @@ test("records real ratings and writes honest stack reads", async ({ page }) => {
     await page.locator(`input[name="${name}"][value="${value}"]`).check();
   }
   await page.getByRole("button", { name: "Save my check-in" }).click();
-  await expect(
-    page.getByText("Keep logging for a few more days"),
-  ).toHaveCount(3);
+  await expect(page.getByText("Keep logging for a few more days")).toHaveCount(
+    3,
+  );
   await expect(page.locator("#tracker-content")).toContainText("1 feel day");
   await expect(page.locator("#tracker-content")).toContainText(
     "not medical proof",
@@ -127,14 +127,14 @@ test("records real ratings and writes honest stack reads", async ({ page }) => {
   await page.getByRole("button", { name: "Edit today's check-in" }).click();
   await page.locator('input[name="energy"][value="2"]').check();
   await page.getByRole("button", { name: "Save my check-in" }).click();
-  await expect(
-    page.getByText("Keep logging for a few more days"),
-  ).toHaveCount(3);
+  await expect(page.getByText("Keep logging for a few more days")).toHaveCount(
+    3,
+  );
   await page.reload();
   await page.getByRole("tab", { name: "Insights", exact: true }).click();
-  await expect(
-    page.getByText("Keep logging for a few more days"),
-  ).toHaveCount(3);
+  await expect(page.getByText("Keep logging for a few more days")).toHaveCount(
+    3,
+  );
 });
 
 test("compares taken and skipped days without inventing verdicts", async ({
@@ -190,20 +190,25 @@ test("keeps the proposed purchase honest and disconnected", async ({
   page,
 }) => {
   await expect(page.locator(".price")).toContainText("15");
-  await expect(page.locator(".price-period")).toContainText("every 30 days");
+  await expect(page.locator(".price-period")).toContainText("per month");
   await expect(page.locator(".price-subtitle")).toContainText(
     "Cancel anytime in Whop",
   );
-  await expect(page.locator(".terms-note")).toContainText(
-    "$15 USD now, then $15 every 30 days",
-  );
+  await expect(page.locator(".terms-note")).toContainText("$15 USD per month");
   await expect(page.locator("#app")).not.toContainText(
     /lifetime|\$19|\$3\.99|for one month/i,
   );
-  await page.getByRole("button", { name: "Start my membership — $15" }).click();
+  await page
+    .getByRole("button", {
+      name: "Start my membership — $15/month",
+      exact: true,
+    })
+    .click();
   await expect(
-    page.getByRole("dialog", { name: "A little early. A lot to come." }),
-  ).toContainText("not taking payments yet");
+    page.getByRole("dialog", {
+      name: "Checkout isn't available in this session.",
+    }),
+  ).toContainText("No payment has been taken");
   await page.getByRole("button", { name: "Back to my routine" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });

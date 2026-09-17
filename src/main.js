@@ -118,6 +118,7 @@ try {
   storageFailed = true;
 }
 let activeTab = "today";
+let previewRecord = structuredClone(state);
 let selectedDate = todayKey();
 // Paid-access UI state. Declared before first render() so render can read it.
 const paidAccess = {
@@ -152,9 +153,10 @@ document.querySelector("#app").innerHTML = `
   <main>
     <section class="hero wrap" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <div class="eyebrow"><span class="status-dot"></span> A FRIENDLIER DAILY ROUTINE</div>
-        <h1 id="hero-title">Your supplements.<br>Your little ritual.<br><span>More you.</span></h1>
-        <p class="hero-description">Track your supplements. See how you feel.<br>A calm little home for your daily stack, right in your browser.</p>
+        <div class="eyebrow"><span class="status-dot"></span> FOR PEOPLE ALREADY TAKING SUPPLEMENTS</div>
+        <h1 id="hero-title">Know what you took.<br>Notice how<br><span>you feel.</span></h1>
+        <p class="hero-description">Put your supplements, daily check-offs, and feeling logs in one place. Build a record instead of relying on memory.</p>
+        <p class="hero-offer">Try free in this browser. Account saving: <strong>$15 USD per month</strong>, plus applicable tax.</p>
         <div class="hero-actions"><a class="button button-coral" href="#tracker" id="try-button">Find your rhythm ${icon("arrow")}</a><span class="try-note">Try the tracker.<br>No account needed.</span></div>
         <div class="hero-footnote">${icon("check")} Not another PDF. A place to come back to.</div>
         <div class="mascot-note"><img src="/assets/reki-face.webp" alt="Reki, your red-haired, bespectacled companion" width="48" height="48"><p>Small habits. No guilt.<br><strong>I'll be here when you're ready.</strong></p></div>
@@ -163,12 +165,18 @@ document.querySelector("#app").innerHTML = `
         <div class="handwritten">a little look at your day <span aria-hidden="true">↴</span></div>
         <section id="tracker" class="tracker" aria-label="Interactive Reki Web tracker" tabindex="-1">
           <div class="tracker-top"><span class="mini-brand">reki<span>.</span></span><span id="demo-badge" class="demo-badge"></span></div>
+          <div id="preview-intro" class="preview-intro">
+            <img src="/assets/reki-face.webp" alt="" width="48" height="48">
+            <div><strong>Start with one supplement.</strong><p>Add yours, check it off, then log how you feel. This preview stays in this browser.</p><div class="preview-actions"><button type="button" class="text-button" data-add>Add my first supplement ${icon("plus")}</button><button type="button" class="text-button" id="preview-tour">Show me around</button></div><a href="#membership-difference">What does membership add?</a></div>
+          </div>
           <div class="tracker-tabs" role="tablist" aria-label="Tracker views">
             <button id="tab-today" role="tab" aria-controls="tracker-content" data-tab="today">${icon("sun")} Today</button>
             <button id="tab-stack" role="tab" aria-controls="tracker-content" data-tab="stack">${icon("stack")} My stack</button>
             <button id="tab-insights" role="tab" aria-controls="tracker-content" data-tab="insights">${icon("chart")} Insights</button>
           </div>
           <div id="tracker-content" role="tabpanel" tabindex="0"></div>
+          <div id="save-moment" class="save-moment" hidden><div><strong>You started a record. Keep it with you.</strong><p>Preview changes stay here. Membership saves to your account so you can return on another device.</p></div><button type="button" class="button button-small button-coral" id="save-account">Keep this record across devices ${icon("arrow")}</button></div>
+          <button type="button" class="import-preview text-button" id="import-preview" hidden>Bring my preview into my account ${icon("arrow")}</button>
           <div class="tracker-bottom"><span>${icon("lock")} <span id="storage-status"></span></span><span><button class="text-button" id="tour-replay">Tour</button><button class="text-button" id="auth-link">Sign in</button><button class="text-button" id="start-own">Make it yours ${icon("arrow")}</button></span></div>
         </section>
         <div class="product-caption"><span class="caption-line"></span> REAL BUTTONS. YOUR NEXT SMALL STEP.</div>
@@ -183,23 +191,40 @@ document.querySelector("#app").innerHTML = `
         <article><div class="step-number">03 <span></span></div><div class="step-art feeling-art"><span>1</span><span>2</span><span>3</span><span class="chosen">4</span><span>5</span></div><h3>Notice how you feel.</h3><p>Log your energy, sleep, and mood. Build a personal record, not a promise that a supplement works.</p></article>
       </div>
     </section>
-    <section id="pricing" class="pricing wrap" aria-labelledby="price-title">
-      <div class="price-story"><span class="eyebrow">A LITTLE INVESTMENT IN YOUR ROUTINE</span><h2 id="price-title">Less overthinking.<br>More showing up.</h2><p>A browser tracker with a familiar face.<br>$15 now, then $15 every 30 days.<br>Just you, your stack, and a fresh start each day.</p><img class="waving-reki" src="/assets/reki-waving.webp" alt="Reki smiling and waving" width="480" height="1014" loading="lazy"><span class="mascot-signature">see you tomorrow.</span></div>
-      <div class="price-card"><span class="offer-label">REKI WEB · MONTHLY MEMBERSHIP</span><div class="price"><span class="currency">$</span>15<span class="price-period">USD<br>every 30 days</span></div><p class="price-subtitle">$15 now, then $15 every 30 days. Cancel anytime in Whop.</p><ul><li>${icon("check")} Your supplement stack & serving notes</li><li>${icon("check")} Daily check-offs & morning / evening schedule</li><li>${icon("check")} Energy, sleep & mood check-ins</li><li>${icon("check")} Ongoing access while membership is active</li></ul><button class="button button-dark price-button" id="beta-button">Start my membership — $15 ${icon("arrow")}</button><p class="checkout-note">Local preview. Checkout isn't connected yet.</p><p class="terms-note">$15 USD now, then $15 every 30 days. Manage or cancel in Whop; you keep access for time already paid. AI scanning and iPhone app access are not included.</p></div>
+    <section id="membership-difference" class="comparison wrap" aria-labelledby="comparison-title">
+      <div class="section-heading"><div><span class="eyebrow">TRY THE ROUTINE. KEEP IT WITH YOU.</span><h2 id="comparison-title">Same tracker.<br>A different place to save.</h2></div><p>The preview is genuinely usable for free.<br>Membership adds an account-backed record.</p></div>
+      <table><caption class="sr-only">Free preview and Reki Web membership comparison</caption><thead><tr><th scope="col">What you get</th><th scope="col">Free preview</th><th scope="col">Member</th></tr></thead><tbody>
+        <tr><th scope="row">Stack, check-offs, feel logs & Insights</th><td>Included</td><td>Included</td></tr>
+        <tr><th scope="row">Where your record is saved</th><td>This browser only</td><td>Your Reki Web account</td></tr>
+        <tr><th scope="row">Open your saved record on another device</th><td>Not included</td><td>Sign in with the same Whop account</td></tr>
+        <tr><th scope="row">Recover saved records after clearing browser data</th><td>Local record is lost</td><td>Sign in to load your last server save</td></tr>
+        <tr><th scope="row">After membership ends</th><td>Preview remains free</td><td>Read & export your saved record; edits require active access</td></tr>
+      </tbody></table>
+      <p class="comparison-note">Both versions include the tracker and Insights. Membership adds account saving, not medical advice or guaranteed results. An internet connection is needed to save to your account. AI scanning and iPhone Pro access are not included.</p>
     </section>
+    <section id="pricing" class="pricing wrap" aria-labelledby="price-title">
+      <div class="price-story"><span class="eyebrow">YOUR ROUTINE, BEYOND ONE BROWSER</span><h2 id="price-title">Keep your record.<br>Wherever you log in.</h2><p>Start on your laptop. Return on your phone.<br>$15 USD per month, plus applicable tax.<br>Your saved routine follows your Whop account.</p><img class="waving-reki" src="/assets/reki-waving.webp" alt="Reki smiling and waving" width="480" height="1014" loading="lazy"><span class="mascot-signature">see you tomorrow.</span></div>
+      <div class="price-card"><span class="offer-label">REKI WEB · MONTHLY MEMBERSHIP</span><div class="price"><span class="currency">$</span>15<span class="price-period">USD<br>per month</span></div><p class="price-subtitle">$15 USD per month, plus applicable tax. Renews automatically until canceled. Cancel anytime in Whop.</p><ul><li>${icon("check")} Account-backed stack, check-offs & feel logs</li><li>${icon("check")} Load your saved record on another device</li><li>${icon("check")} Recover your last save after clearing browser data</li><li>${icon("check")} Read & export saved data after access ends</li></ul><button class="button button-dark price-button" id="beta-button" aria-describedby="checkout-status billing-disclosure">Start my membership — $15/month ${icon("arrow")}</button><p class="checkout-note" id="checkout-status" role="status" aria-live="polite">Checking membership and checkout availability...</p><p class="terms-note" id="billing-disclosure">$15 USD per month. Applicable tax is added at checkout; Whop shows your total and renewal date before you pay. Manage or cancel in Whop before your next renewal. AI scanning and iPhone app access are not included.</p></div>
+    </section>
+    <section class="after-join wrap" aria-labelledby="after-join-title"><img src="/assets/reki-face.webp" alt="" width="56" height="56"><div><h3 id="after-join-title">After you join</h3><ol><li><strong>Pay on Whop.</strong> Review the total, tax, and recurring billing.</li><li><strong>Come back to Reki Web.</strong> Checkout returns you here.</li><li><strong>Sign in with Whop.</strong> Use the same account you paid with. We verify membership and load your tracker.</li></ol><p>Already signed in with active access? The membership button opens your tracker instead of another checkout. If the return is interrupted, come back here and choose Sign in.</p></div></section>
     <section class="faq wrap" aria-labelledby="faq-title"><div><span class="eyebrow">A FEW LITTLE DETAILS</span><h2 id="faq-title">Good to know.</h2></div><div class="faq-items">
       <details><summary>Is this the Reki iPhone app?<span>+</span></summary><p>No. Reki Web is a separate browser tracker. This offer does not unlock Reki Pro or any paid features in the iPhone app.</p></details>
       <details><summary>What does this preview save?<span>+</span></summary><p>Your stack, daily check-offs, and check-ins stay in this browser's local storage. Nothing is sent to a server. There is no account, cloud backup, or device sync. Clearing browser data removes your record. Avoid shared devices for personal information.</p></details>
       <details><summary>Can it tell me if my supplements work?<span>+</span></summary><p>It helps you record your routine and notice how you feel over time. Self-reported patterns do not establish that a supplement caused a change. Reki does not diagnose conditions or give medical advice.</p></details>
-      <details><summary>Do I need a card to try it?<span>+</span></summary><p>No. The interactive local preview is free to explore without an account or a card. Membership is separate: $15 now and every 30 days through Whop; checkout is not enabled here.</p></details>
+      <details><summary>Do I need a card to try it?<span>+</span></summary><p>No. The interactive preview is free to explore, no account or card needed. Membership is separate: $15 USD per month through Whop, plus applicable tax. It renews automatically until canceled; cancel anytime in Whop.</p></details>
+      <details><summary>What if it isn't useful for me?<span>+</span></summary><p>Use the free preview first: add your supplement, check it off, and log how you feel. You don't need to buy to test the routine. Membership pays for account saving, not a promise of health improvement. If you join, you can cancel future renewals in Whop. Review the refund terms at checkout; there is no additional money-back guarantee stated here.</p></details>
+      <details><summary>Is my data private?<span>+</span></summary><p>Free preview entries stay in this browser. When you choose to save a record to your member account, Reki Web stores it on its server and loads it for that signed-in account. Whop handles payment and sign-in; your tracker content is not sent to Whop for billing verification. <a href="/legal.html#privacy">Read the web privacy information</a>.</p></details>
+      <details><summary>How do I cancel?<span>+</span></summary><p>Sign in to the Whop account you used to pay and manage your Reki Web membership there. Cancel before your next renewal to stop future charges. Cancellation is separate from a refund request; read the billing and refund terms in checkout. Need help? Email admin@rekisupplement.org.</p></details>
     </div></section>
   </main>
-  <footer class="wrap"><a class="brand" href="#"><span>reki<span class="brand-dot">.</span></span><span class="web-label">WEB</span></a><p>A little more mindful. A little more you.</p><a href="mailto:admin@rekisupplement.org">Say hello ${icon("arrow")}</a></footer>
+  <footer class="wrap"><a class="brand" href="#"><span>reki<span class="brand-dot">.</span></span><span class="web-label">WEB</span></a><p>A little more mindful. A little more you.</p><nav class="legal-links" aria-label="Legal information"><a href="/legal.html#terms">Terms</a><a href="/legal.html#privacy">Privacy</a><a href="/legal.html#refunds">Refunds</a></nav><a href="mailto:admin@rekisupplement.org">Say hello ${icon("arrow")}</a></footer>
   <dialog id="editor" aria-labelledby="editor-title"><form id="supplement-form"><div class="dialog-heading"><h2 id="editor-title">A new little habit.</h2><button type="button" class="icon-button" data-close aria-label="Close supplement editor">${icon("close")}</button></div><input type="hidden" name="id"><label>Supplement name<input name="name" required maxlength="70" placeholder="e.g. Vitamin D3" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="supplement-suggest" aria-autocomplete="list"><ul class="suggest-list" id="supplement-suggest" role="listbox" aria-label="Matching supplements" hidden></ul></label><label>Your serving note<input name="detail" maxlength="100" placeholder="e.g. 1 softgel with breakfast" autocomplete="off"></label><label>When do you take it?<select name="time"><option>Morning</option><option>Evening</option><option>Anytime</option></select></label><p class="form-note">Record your existing routine. Follow your label or clinician's guidance for dosage.</p><button class="button button-coral" type="submit">Save to my stack ${icon("check")}</button></form></dialog>
   <dialog id="checkin" aria-labelledby="checkin-title"><form id="checkin-form"><div class="dialog-heading"><h2 id="checkin-title">How's your day feeling?</h2><button type="button" class="icon-button" data-close aria-label="Close check-in">${icon("close")}</button></div><p class="dialog-intro">No right answer. Just a moment for you.</p>${["energy", "sleep", "mood"].map((metric) => `<fieldset><legend>${metric[0].toUpperCase() + metric.slice(1)}</legend><div class="rating-options">${[1, 2, 3, 4, 5].map((n) => `<label><input type="radio" name="${metric}" value="${n}" required><span>${n}</span></label>`).join("")}</div><div class="rating-scale"><span>Low</span><span>Great</span></div></fieldset>`).join("")}<button class="button button-coral" type="submit">Save my check-in ${icon("check")}</button></form></dialog>
   <dialog id="start-dialog" aria-labelledby="start-title"><div class="dialog-heading"><h2 id="start-title">Make room for your routine.</h2><button class="icon-button" data-close aria-label="Close start dialog">${icon("close")}</button></div><p>This removes the example stack and any preview check-ins so you can start fresh. Your new entries will stay in this browser only.</p><button class="button button-coral" id="confirm-start">Start my own stack ${icon("arrow")}</button></dialog>
   <dialog id="delete-dialog" aria-labelledby="delete-title"><div class="dialog-heading"><h2 id="delete-title">Remove this supplement?</h2><button class="icon-button" data-close aria-label="Close removal dialog">${icon("close")}</button></div><p id="delete-description"></p><button class="button button-dark" id="confirm-delete">Remove from my stack</button></dialog>
-  <dialog id="beta-dialog" aria-labelledby="beta-title"><div class="dialog-heading"><h2 id="beta-title">A little early. A lot to come.</h2><button class="icon-button" data-close aria-label="Close beta details">${icon("close")}</button></div><p>This is the local Reki Web preview. The $15 membership (now and every 30 days) is not taking payments yet. Nothing has been purchased and no account has been created.</p><p>You can keep exploring the working tracker now.</p><button class="button button-coral" data-close>Back to my routine ${icon("arrow")}</button></dialog>
+  <dialog id="beta-dialog" aria-labelledby="beta-title"><div class="dialog-heading"><h2 id="beta-title">Checkout isn't available in this session.</h2><button class="icon-button" data-close aria-label="Close beta details">${icon("close")}</button></div><p>We couldn't load a configured checkout. No payment has been taken. Membership is $15 USD per month, plus applicable tax, and renews automatically until canceled.</p><p>Keep using the free preview, try again, or contact admin@rekisupplement.org.</p><button class="button button-coral" data-close>Back to my routine ${icon("arrow")}</button></dialog>
+  <dialog id="membership-dialog" aria-labelledby="membership-title"><div class="dialog-heading"><h2 id="membership-title">Your routine, beyond this browser.</h2><button type="button" class="icon-button" data-close aria-label="Close membership details">${icon("close")}</button></div><img class="membership-mascot" src="/assets/reki-face.webp" alt="Reki" width="60" height="60"><p>Your preview works here for free. Join to save a record to your account and load it on another device with the same Whop sign-in.</p><p><strong>$15 USD per month, plus applicable tax.</strong> Renews automatically until canceled. Cancel future renewals in Whop.</p><p>After payment, return here and Sign in with the same Whop account. Your existing account record is loaded first; preview entries stay separate unless you choose to import them.</p><button type="button" class="button button-coral" id="join-account">Join for account saving ${icon("arrow")}</button><p id="membership-status" role="status" aria-live="polite"></p><button type="button" class="text-button" data-close>Keep using this browser for free</button></dialog>
+  <dialog id="import-dialog" aria-labelledby="import-title"><div class="dialog-heading"><h2 id="import-title">Keep the record you started?</h2><button type="button" class="icon-button" data-close aria-label="Close import details">${icon("close")}</button></div><p>This copies this browser's preview into your currently empty account. If you used sample supplements, those entries are included; edit or remove them afterward. Nothing is copied without your confirmation.</p><p id="import-summary"></p><button type="button" class="button button-coral" id="confirm-import">Import my preview</button><button type="button" class="text-button" data-close>Start fresh instead</button></dialog>
   <div id="member-banner" class="member-banner" hidden></div>
   <div id="tour" class="tour" hidden>
     <div class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tour-title">
@@ -247,6 +272,23 @@ function render(focusKey) {
       ? "Saving unavailable in this browser"
       : "Saved in this browser only";
   document.querySelector("#start-own").hidden = !state.demo;
+  document.querySelector("#preview-intro").hidden =
+    paidAccess.me?.signedIn === true;
+  const usedPreview =
+    (!state.demo && state.supplements.length > 0) ||
+    Object.values(state.days).some(
+      (entry) => entry.taken?.length || entry.checkin,
+    );
+  document.querySelector("#save-moment").hidden =
+    paidAccess.me?.signedIn === true || !usedPreview;
+  const hasPreview =
+    (!previewRecord.demo && previewRecord.supplements.length > 0) ||
+    Object.keys(previewRecord.days).length > 0;
+  document.querySelector("#import-preview").hidden =
+    !paidAccess.unlocked ||
+    state.supplements.length > 0 ||
+    Object.keys(state.days).length > 0 ||
+    !hasPreview;
   document
     .querySelector("#tracker")
     .classList.toggle("locked", paidAccess.locked);
@@ -485,16 +527,31 @@ document.addEventListener("click", (event) => {
     document.querySelector("[data-add]")?.focus();
     announce("Supplement removed.");
   }
-  if (target.id === "beta-button") {
-    if (paidAccess.unlocked) {
-      window.location.hash = "#tracker";
-      return;
-    }
-    if (paidAccess.checkoutUrl) {
-      window.location.href = paidAccess.checkoutUrl;
-      return;
-    }
-    document.querySelector("#beta-dialog").showModal();
+  if (target.id === "save-account") {
+    document.querySelector("#membership-dialog").showModal();
+  }
+  if (target.id === "import-preview") {
+    document.querySelector("#import-summary").textContent =
+      `${previewRecord.supplements.length} supplements and ${Object.keys(previewRecord.days).length} recorded days.`;
+    document.querySelector("#import-dialog").showModal();
+  }
+  if (
+    target.id === "confirm-import" &&
+    paidAccess.unlocked &&
+    state.supplements.length === 0 &&
+    Object.keys(state.days).length === 0
+  ) {
+    state = {
+      ...structuredClone(previewRecord),
+      demo: false,
+      preferences: state.preferences,
+    };
+    save();
+    render();
+    document.querySelector("#import-dialog").close();
+  }
+  if (target.id === "beta-button" || target.id === "join-account") {
+    void openMembership(target);
   }
   if (target.id === "auth-link") {
     if (paidAccess.me?.signedIn) {
@@ -612,7 +669,7 @@ const TOUR_STEPS = [
   {
     img: "/assets/reki-waving.webp",
     title: "Welcome in.",
-    text: "I'm Reki. This is your personal tracker now — backed up, not stuck in this browser. Thirty seconds, then it's yours.",
+    text: "I'm Reki. Try adding a supplement, checking it off, and logging how you feel. The free preview saves in this browser. Membership adds account-backed saving.",
   },
   {
     img: "/assets/reki-pointing.webp",
@@ -698,6 +755,8 @@ function serverPayload() {
 
 function queueServerSync() {
   if (!paidAccess.unlocked) return;
+  document.querySelector("#storage-status").textContent =
+    "Saving to your account...";
   clearTimeout(serverSyncTimer);
   serverSyncTimer = setTimeout(() => flushServerSync(), 900);
 }
@@ -714,6 +773,8 @@ async function flushServerSync() {
   });
   if (status === 200 && body) {
     paidAccess.revision = body.revision;
+    document.querySelector("#storage-status").textContent =
+      "Saved to your account";
     return true;
   }
   if (status === 409) {
@@ -725,28 +786,29 @@ async function flushServerSync() {
     await refreshAccess();
     return false;
   }
+  document.querySelector("#storage-status").textContent =
+    "Not saved to your account. Keep this tab open and retry.";
   return false;
 }
 
 async function adoptServerState(note) {
   const remote = await paidFetch("/api/state");
+  if (!remote || !Number.isSafeInteger(remote.revision)) {
+    document.querySelector("#storage-status").textContent =
+      "Couldn't load your saved record. Reload to retry; no data was uploaded.";
+    return false;
+  }
   const srv = remote?.state;
-  if (
-    srv &&
-    (srv.supplements?.length ||
-      Object.keys(srv.days || {}).length ||
-      (remote.revision || 0) > 0)
-  ) {
+  if (srv === null || (srv && Array.isArray(srv.supplements) && srv.days)) {
     state = {
       demo: false,
-      supplements: srv.supplements || [],
-      days: srv.days || {},
+      supplements: srv?.supplements || [],
+      days: srv?.days || {},
       preferences: {
-        tourCompleted: srv.preferences?.tourCompleted === true,
+        tourCompleted: srv?.preferences?.tourCompleted === true,
       },
     };
     paidAccess.revision = remote.revision || 0;
-    save();
     render();
     if (note) announce(note);
     return true;
@@ -831,7 +893,10 @@ function renderTourStep() {
   document.querySelector("#tour-step").textContent =
     `${paidAccess.tourStep + 1} of ${TOUR_STEPS.length}`;
   document.querySelector("#tour-title").textContent = step.title;
-  document.querySelector("#tour-text").textContent = step.text;
+  document.querySelector("#tour-text").textContent =
+    paidAccess.tourStep === 0 && paidAccess.unlocked
+      ? "I'm Reki. Your membership is active. Your account saves your stack and check-ins, so you can return on another device. Let's get you started."
+      : step.text;
   document.querySelector("#tour-back").disabled = paidAccess.tourStep === 0;
   document.querySelector("#tour-next").textContent =
     paidAccess.tourStep === TOUR_STEPS.length - 1 ? "Finish" : "Next";
@@ -878,6 +943,83 @@ function updatePriceCardRenew() {
   }
   if (note) {
     note.textContent = "Membership paused. Renew to keep tracking.";
+  }
+}
+
+// Always check the current session before leaving for checkout. A failed
+// auth check is not a signed-out visitor and must never risk a second purchase.
+let checkoutBusy = false;
+async function openMembership(button) {
+  if (checkoutBusy) return;
+  checkoutBusy = true;
+  const previous = button.innerHTML;
+  const note = document.querySelector(
+    button.id === "join-account" ? "#membership-status" : "#checkout-status",
+  );
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  button.textContent = "Checking your membership...";
+  note.textContent = "Checking access before opening checkout...";
+  let navigating = false;
+  try {
+    await paidInit;
+    if (!paidAccess.checkoutUrl && !paidAccess.unlocked) {
+      document.querySelector("#membership-dialog").close();
+      document.querySelector("#beta-dialog").showModal();
+      note.textContent =
+        "Checkout is unavailable in this session. No payment has been taken.";
+      return;
+    }
+    const me = await paidFetch("/api/me?refresh=1");
+    if (
+      !me ||
+      typeof me.signedIn !== "boolean" ||
+      (me.signedIn &&
+        (!me.access ||
+          me.access.verificationPending ||
+          me.access.status === "verification_pending"))
+    ) {
+      note.textContent =
+        "We couldn't verify your membership. Please retry before paying; no checkout was opened.";
+      return;
+    }
+    if (me.signedIn && me.access.active === true) {
+      // Use the same account-load path as a returning member, not a URL flag.
+      await initPaidAccess();
+      if (!paidAccess.unlocked) {
+        note.textContent =
+          "Access verification is still pending. Try again; no checkout was opened.";
+        return;
+      }
+      window.location.hash = "#tracker";
+      document.querySelector("#membership-dialog").close();
+      document.querySelector("#tracker").focus({ preventScroll: true });
+      note.textContent =
+        "Membership active. Your tracker is ready; no new purchase needed.";
+      return;
+    }
+    if (!paidAccess.checkoutUrl) {
+      document.querySelector("#membership-dialog").close();
+      document.querySelector("#beta-dialog").showModal();
+      return;
+    }
+    button.textContent = "Opening secure checkout...";
+    note.textContent =
+      "Opening Whop in this tab. Review tax and the monthly renewal before paying.";
+    window.location.assign(paidAccess.checkoutUrl);
+    navigating = true;
+  } catch {
+    note.textContent =
+      "Checkout couldn't open. Please retry or contact admin@rekisupplement.org.";
+  } finally {
+    if (!navigating) {
+      checkoutBusy = false;
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.innerHTML = paidAccess.unlocked
+        ? `Open your tracker ${icon("arrow")}`
+        : previous;
+    }
   }
 }
 
@@ -928,14 +1070,21 @@ async function initPaidAccess() {
     window.history.replaceState(null, "", clean);
   }
   const cfg = await paidFetch("/api/config");
-  if (!cfg) return; // static preview without backend
+  if (!cfg) {
+    document.querySelector("#checkout-status").textContent =
+      "Checkout is unavailable in this session. The free preview still works.";
+    return;
+  }
   paidAccess.checkoutUrl =
     typeof cfg.checkoutUrl === "string" ? cfg.checkoutUrl : "";
   paidAccess.billing = cfg.billing || null;
   const note = document.querySelector(".checkout-note");
   if (note && paidAccess.checkoutUrl)
     note.textContent =
-      "Secure checkout via Whop. $15 now, then $15 every 30 days.";
+      "Secure checkout via Whop. $15 USD per month, plus applicable tax.";
+  else if (note)
+    note.textContent =
+      "Checkout is unavailable in this session. The free preview still works.";
   const me = await paidFetch("/api/me?refresh=1");
   paidAccess.me = me;
   const authLink = document.querySelector("#auth-link");
@@ -953,26 +1102,13 @@ async function initPaidAccess() {
     if (statusEl)
       statusEl.textContent = `Signed in · access until ${fmtDate(me.access.expiresAt)} · backed up`;
     updatePriceCardMember(me.access.expiresAt);
-    const hasLocalWork = !state.demo;
     const adopted = await adoptServerState("");
     if (!adopted) {
-      if (state.demo) {
-        // Fresh member: start clean, not with sample data.
-        state = {
-          demo: false,
-          supplements: [],
-          days: {},
-          preferences: { tourCompleted: false },
-        };
-      }
-      paidAccess.revision = 0;
-      await flushServerSync();
-      // Re-read: a 409 means another device won; adopt it instead.
-      await adoptServerState("");
-      render();
-    } else if (hasLocalWork) {
-      announce("Your saved stack is loaded.");
+      paidAccess.unlocked = false;
+      paidAccess.locked = true;
+      return;
     }
+    announce("Your account record is loaded. Preview data stays separate.");
     // The banner follows the verified response, never the URL alone.
     if (accessParam === "active") {
       showWelcomeBanner(me.access.expiresAt);
@@ -997,14 +1133,18 @@ async function initPaidAccess() {
 
 const localSave = save;
 save = function saveAndSync() {
-  localSave();
+  // Account data must not become the shared browser's free-preview cache.
+  if (!paidAccess.me?.signedIn) {
+    localSave();
+    previewRecord = structuredClone(state);
+  }
   queueServerSync();
 };
 
 document.addEventListener("click", (event) => {
   const target = event.target.closest("button");
   if (!target) return;
-  if (target.id === "tour-replay") {
+  if (target.id === "tour-replay" || target.id === "preview-tour") {
     hideBanner();
     startTour();
     return;
@@ -1044,4 +1184,13 @@ document.addEventListener("keydown", (event) => {
   endTour(false);
 });
 
-initPaidAccess();
+const paidInit = initPaidAccess();
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted) return;
+  checkoutBusy = false;
+  const button = document.querySelector("#beta-button");
+  button.disabled = false;
+  button.removeAttribute("aria-busy");
+  button.innerHTML = `Start my membership — $15/month ${icon("arrow")}`;
+  void initPaidAccess();
+});
